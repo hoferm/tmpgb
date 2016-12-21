@@ -1,9 +1,10 @@
 CC = gcc
-CFLAGS = -Wall -std=c99 -pedantic -MD -MP
+CFLAGS = -Wall -std=c99 -pedantic -MMD -MP
+LD =
 
 SRC = $(wildcard *.c)
 
-all: $(SRC:%.c=%.o)
+tmpgb: $(SRC:%.c=%.o)
 	$(LD) -o $@ $^
 
 -include $(SRC:%.c=%.d)
