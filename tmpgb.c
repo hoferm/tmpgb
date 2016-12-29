@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "error.h"
 #include "memory.h"
 
 static void usage(void)
@@ -32,6 +33,16 @@ static void load_rom(const char *rom)
 
 	read_rom();
 	fclose(fp);
+}
+
+static void run(void)
+{
+	int ret;
+
+	if ((ret = init_memory()) != 0) {
+		errnr = ret;
+		exit_error();
+	}
 }
 
 int main(int argc, char **argv)

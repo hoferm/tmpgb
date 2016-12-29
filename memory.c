@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#include "error.h"
 #include "memory.h"
 
 #define N_LOGO_OFFSET 0x104
