@@ -1,26 +1,12 @@
-#include "cpu.h"
+#include <stdint.h>
 
-uint8_t get_highest_bits(uint16_t reg)
-{
-	uint8_t highreg = reg >> 8;
-	return highreg;
-}
+struct reg {
+	uint8_t high;
+	uint8_t low;
+} AF, BC, DE, HL;
 
-uint8_t get_lowest_bits(uint16_t reg)
-{
-	uint8_t lowreg = reg & 0x00FF;
-	return lowreg;
-}
-
-void set_high_register(uint16_t reg, uint8_t value)
-{
-
-}
-
-void set_low_register(uint16_t reg, uint8_t value)
-{
-
-}
+uint16_t PC;
+uint16_t SP;
 
 uint8_t fetch_8bit_data(void)
 {
@@ -44,50 +30,54 @@ int rotate_left(uint8_t reg)
 
 void set_zflag(void)
 {
-	AF |= 128;
+	AF.low |= 128;
 }
 
 void set_nflag(void)
 {
-	AF |= 64;
+	AF.low |= 64;
 }
 
 void set_hflag(void)
 {
-	AF |= 32;
+	AF.low |= 32;
 }
 
 void set_cflag(void)
 {
-	AF |= 16;
+	AF.low |= 16;
 }
 
 void reset_zflag(void)
 {
-	AF &= 127;
+	AF.low &= 127;
 }
 
 void reset_nflag(void)
 {
-	AF &= 181;
+	AF.low &= 181;
 }
 
 void reset_hflag(void)
 {
-	AF &= 223;
+	AF.low &= 223;
 }
 
 void reset_cflag(void)
 {
-	AF &= 239;
+	AF.low &= 239;
 }
 
 void init_cpu(void)
 {
-	AF = 0x01B0;
-	BC = 0x0013;
-	DE = 0x00D8;
-	HL = 0x014D;
+	AF.high = 0x01;
+	AF.low = 0xB0;
+	BC.high = 0x00;
+	BC.low = 0x13;
+	DE.high = 0x00;
+	DE.low = 0xD8;
+	HL.high = 0x01;
+	HL.low = 0x4D;
 	SP = 0xFFFE;
 
 	PC = 0x100;
@@ -102,19 +92,25 @@ static void nop(void)
 /* LD BC,nn */
 static void op0x01(void)
 {
-	BC = fetch_16bit_data();
+	uint16_t temp = fetch_16bit_data();
+	BC.high = temp >> 8;
+	BC.low = temp;
 }
 
 /* LD BC,A */
 static void op0x02(void)
 {
-	BC = get_highest_bits(AF);
+	BC.high = 0;
+	BC.low = AF.high;
 }
 
 /* INC BC */
 static void op0x03(void)
 {
-	BC++;
+	BC.low++;
+	if(BC.low == 0)
+		BC.high++;
+	
 }
 
 
@@ -131,16 +127,16 @@ static void op0x05(void)
 /* LD B,n */
 static void op0x06(void)
 {
-	set_high_register(BC, fetch_8bit_data());
+	BC.high = fetch_8bit_data();
 }
 
 /* RLCA A */
 static void op0x07(void)
 {
-	if (rotate_left(get_highest_bits(AF)))
+	if (rotate_left(AF.high))
 		set_cflag();
 
-	if (get_highest_bits(AF) == 0)
+	if (AF.high == 0)
 		set_zflag();
 
 	reset_nflag();
@@ -155,12 +151,18 @@ static void op0x08(void)
 /* ADD HL,BC */
 static void op0x09(void)
 {
-	int tmp = HL + BC;
+	int tmp = HL.high + BC.high;
+	tmp <<= 8;
+	tmp += HL.low + BC.low;
 	if (tmp > 65535)
 		set_cflag();
 
-	HL = tmp;
-	tmp = (HL & 0x0FFF) + (BC & 0x0FFF);
+	HL.high = tmp >> 8;
+	HL.low = tmp;
+	tmp = HL.high + BC.high;
+	tmp &= 0x0F;
+	tmp <<= 8;
+	tmp += HL.low + BC.low;
 	if (tmp > 4095)
 		set_hflag();
 
@@ -171,7 +173,7 @@ static void op0x09(void)
 /* LD A,BC */
 static void op0x0A(void)
 {
-	set_high_register(AF, BC);
+	AF.high = BC.low;
 }
 
 static void op0x0B(void)
@@ -192,7 +194,7 @@ static void op0x0D(void)
 /* LD C,n */
 static void op0x0E(void)
 {
-	set_low_register(BC, fetch_8bit_data());
+	BC.low = fetch_8bit_data();
 }
 
 static void op0x0F(void)
@@ -218,13 +220,19 @@ static void op0x12(void)
 /* INC DE */
 static void op0x13(void)
 {
-	DE++;
+	DE.low++;
+	if(DE.low == 0)
+		DE.high++;
+	
 }
 
 /* INC HL */
 static void op0x23(void)
 {
-	HL++;
+	HL.low++;
+	if(HL.low == 0)
+		HL.high++;
+	
 }
 
 /* INC SP */

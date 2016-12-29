@@ -35,7 +35,7 @@ static int check_complement(void)
 	int i;
 	int sum = 0;
 
-	for (i = 0x134; i < 0x14D; ++i) {
+	for (i = 0x134; i < 0x14E; ++i) {
 		sum += memory[i];
 	}
 
