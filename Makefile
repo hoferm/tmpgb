@@ -1,16 +1,16 @@
 CC = gcc
-CFLAGS = -Wall -std=c99 -pedantic -MMD -MP
+CFLAGS = -Wall -std=c99 -pedantic -MMD -MP -DDEBUG
 LD =
 
 SRC = $(wildcard *.c)
 
 tmpgb: $(SRC:%.c=%.o)
-	$(LD) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^
 
 -include $(SRC:%.c=%.d)
 
 clean:
-	rm $(OBJ_FILE)
+	rm tmpgb
 
 .PHONY:
 	clean all
