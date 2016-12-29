@@ -55,5 +55,7 @@ int main(int argc, char **argv)
 	rom = argv[1];
 	load_rom(rom);
 
+	run();
+
 	return 0;
 }
