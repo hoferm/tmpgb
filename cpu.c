@@ -18,7 +18,7 @@ uint8_t fetch_8bit_data(void)
 {
 	uint8_t data;
 
-	data = memory[PC];
+	data = read_memory(PC);
 	PC++;
 
 	return data;
@@ -28,7 +28,7 @@ uint16_t fetch_16bit_data(void)
 {
 	uint16_t data;
 
-	data = memory[PC] + (memory[PC+1] << 8);
+	data = read_memory(PC) + (read_memory(PC + 1) << 8);
 	PC = PC + 2;
 
 	return data;
@@ -38,46 +38,46 @@ void fetch_opcode(void)
 {
 	uint8_t opcode;
 
-	opcode = memory[PC];
+	opcode = read_memory(PC);
 	PC++;
 }
 
-void set_zflag(void)
+static void set_zflag(void)
 {
 	AF.low |= 128;
 }
 
-void set_nflag(void)
+static void set_nflag(void)
 {
 	AF.low |= 64;
 }
 
-void set_hflag(void)
+static void set_hflag(void)
 {
 	AF.low |= 32;
 }
 
-void set_cflag(void)
+static void set_cflag(void)
 {
 	AF.low |= 16;
 }
 
-void reset_zflag(void)
+static void reset_zflag(void)
 {
 	AF.low &= 127;
 }
 
-void reset_nflag(void)
+static void reset_nflag(void)
 {
 	AF.low &= 181;
 }
 
-void reset_hflag(void)
+static void reset_hflag(void)
 {
 	AF.low &= 223;
 }
 
-void reset_cflag(void)
+static void reset_cflag(void)
 {
 	AF.low &= 239;
 }
@@ -102,6 +102,24 @@ uint8_t get_cflag(void)
 	return AF.low >> 4 & 1;
 }
 
+void push_stack(uint8_t low, uint8_t high)
+{
+	write_memory(SP, high);
+	write_memory(SP - 1, low);
+
+	SP -= 2;
+}
+
+uint16_t pop_stack(void)
+{
+	uint16_t value;
+	value = read_memory(SP);
+	value += (read_memory(SP + 1) << 8);
+
+	SP += 2;
+
+	return value;
+}
 
 void init_cpu(void)
 {

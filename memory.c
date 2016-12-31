@@ -1,9 +1,12 @@
 #include <stdio.h>
+#include <string.h>
 
 #include "error.h"
 #include "memory.h"
 
 #define N_LOGO_OFFSET 0x104
+
+unsigned char memory[65536];
 
 static int cmp_nintendo_logo(void)
 {
@@ -48,19 +51,7 @@ static int check_complement(void)
 	return 0;
 }
 
-static void choose_mbc(void)
-{
-	int mode;
-
-	mode = memory[0x147];
-
-	switch(mode) {
-	case 0x00:
-		break;
-	}
-}
-
-void read_rom(void)
+void read_rom(const unsigned char *buffer)
 {
 #ifdef DEBUG
 	int i;
@@ -69,6 +60,17 @@ void read_rom(void)
 		printf("%.2X\n", memory[i]);
 	}
 #endif
+	memcpy(memory, buffer, 16384);
+}
+
+void write_memory(unsigned short addr, unsigned char value)
+{
+	memory[addr] = value;
+}
+
+unsigned char read_memory(unsigned short addr)
+{
+	return memory[addr];
 }
 
 int init_memory(void)
@@ -116,6 +118,8 @@ int init_memory(void)
 	memory[0xFF4A] = 0x00;
 	memory[0xFF4B] = 0x00;
 	memory[0xFFFF] = 0x00;
+
+	mode = memory[0x147];
 
 out:
 	return ret;

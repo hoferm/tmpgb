@@ -15,6 +15,7 @@ static void usage(void)
 static void load_rom(const char *rom)
 {
 	FILE *fp;
+	unsigned char *buffer[READ_SIZE];
 	size_t nread;
 
 	fp = fopen(rom, "rb");
@@ -24,7 +25,7 @@ static void load_rom(const char *rom)
 		exit(EXIT_FAILURE);
 	}
 
-	nread = fread(memory, READ_SIZE, 1, fp);
+	nread = fread(buffer, READ_SIZE, 1, fp);
 
 	if (nread == 0) {
 		if (ferror(fp)) {
@@ -33,8 +34,8 @@ static void load_rom(const char *rom)
 		}
 	}
 
-	read_rom();
 	fclose(fp);
+	read_rom(buffer);
 }
 
 static void run(void)
