@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -std=c99 -pedantic -MMD -MP -DDEBUG
+CFLAGS = -Wall -std=c89 -pedantic -MMD -MP -DDEBUG
 LD =
 
 SRC = $(wildcard *.c)

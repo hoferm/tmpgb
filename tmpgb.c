@@ -4,6 +4,8 @@
 #include "error.h"
 #include "memory.h"
 
+#define READ_SIZE 16384
+
 static void usage(void)
 {
 	fprintf(stderr, "usage: tmpgb <file>");
@@ -22,7 +24,7 @@ static void load_rom(const char *rom)
 		exit(EXIT_FAILURE);
 	}
 
-	nread = fread(memory, 32768, 1, fp);
+	nread = fread(memory, READ_SIZE, 1, fp);
 
 	if (nread == 0) {
 		if (ferror(fp)) {

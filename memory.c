@@ -48,6 +48,18 @@ static int check_complement(void)
 	return 0;
 }
 
+static void choose_mbc(void)
+{
+	int mode;
+
+	mode = memory[0x147];
+
+	switch(mode) {
+	case 0x00:
+		break;
+	}
+}
+
 void read_rom(void)
 {
 #ifdef DEBUG

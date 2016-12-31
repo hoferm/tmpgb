@@ -1,5 +1,9 @@
 #include <stdint.h>
 
+#include "memory.h"
+
+static void init_optable(void);
+
 struct reg {
 	uint8_t high;
 	uint8_t low;
@@ -8,24 +12,34 @@ struct reg {
 uint16_t PC;
 uint16_t SP;
 
+void (*optable[512])(void);
+
 uint8_t fetch_8bit_data(void)
 {
+	uint8_t data;
 
+	data = memory[PC];
+	PC++;
+
+	return data;
 }
 
 uint16_t fetch_16bit_data(void)
 {
+	uint16_t data;
 
+	data = memory[PC] + (memory[PC+1] << 8);
+	PC = PC + 2;
+
+	return data;
 }
 
 void fetch_opcode(void)
 {
+	uint8_t opcode;
 
-}
-
-int rotate_left(uint8_t reg)
-{
-
+	opcode = memory[PC];
+	PC++;
 }
 
 void set_zflag(void)
@@ -81,10 +95,12 @@ void init_cpu(void)
 	SP = 0xFFFE;
 
 	PC = 0x100;
+
+	init_optable();
 }
 
-/* 0x00 */
-static void nop(void)
+/* NOP */
+static void op0x00(void)
 {
 	return;
 }
@@ -108,9 +124,10 @@ static void op0x02(void)
 static void op0x03(void)
 {
 	BC.low++;
-	if(BC.low == 0)
+
+	if (BC.low == 0)
 		BC.high++;
-	
+
 }
 
 
@@ -133,8 +150,10 @@ static void op0x06(void)
 /* RLCA A */
 static void op0x07(void)
 {
-	if (rotate_left(AF.high))
+	if (AF.high > 127)
 		set_cflag();
+
+	AF.high <<= 1;
 
 	if (AF.high == 0)
 		set_zflag();
@@ -221,22 +240,39 @@ static void op0x12(void)
 static void op0x13(void)
 {
 	DE.low++;
-	if(DE.low == 0)
+	if (DE.low == 0)
 		DE.high++;
-	
+
 }
 
 /* INC HL */
 static void op0x23(void)
 {
 	HL.low++;
-	if(HL.low == 0)
+	if (HL.low == 0)
 		HL.high++;
-	
+
 }
 
 /* INC SP */
 static void op0x33(void)
 {
 	SP++;
+}
+
+static void init_optable(void)
+{
+	optable[0x00] = op0x00;
+	optable[0x01] = op0x01;
+	optable[0x02] = op0x02;
+	optable[0x03] = op0x03;
+	optable[0x04] = op0x04;
+	optable[0x05] = op0x05;
+	optable[0x06] = op0x06;
+	optable[0x07] = op0x07;
+	optable[0x08] = op0x08;
+	optable[0x09] = op0x09;
+	optable[0x0A] = op0x0A;
+	optable[0x0B] = op0x0B;
+	optable[0x0C] = op0x0C;
 }
