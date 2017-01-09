@@ -2,6 +2,11 @@
 
 #include "memory.h"
 
+#define ZFLAG 0x80
+#define NFLAG 0x40
+#define HFLAG 0x20
+#define CFLAG 0x10
+
 static void init_optable(void);
 
 struct reg {
@@ -42,64 +47,19 @@ void fetch_opcode(void)
 	PC++;
 }
 
-static void set_zflag(void)
+static void set_flag(uint8_t flag)
 {
-	AF.low |= 128;
+	AF.low |= flag;
 }
 
-static void set_nflag(void)
+static void reset_flag(uint8_t flag)
 {
-	AF.low |= 64;
+	AF.low &= (0xFF - flag);
 }
 
-static void set_hflag(void)
+static uint8_t get_flag(uint8_t flag)
 {
-	AF.low |= 32;
-}
-
-static void set_cflag(void)
-{
-	AF.low |= 16;
-}
-
-static void reset_zflag(void)
-{
-	AF.low &= 127;
-}
-
-static void reset_nflag(void)
-{
-	AF.low &= 181;
-}
-
-static void reset_hflag(void)
-{
-	AF.low &= 223;
-}
-
-static void reset_cflag(void)
-{
-	AF.low &= 239;
-}
-
-uint8_t get_zflag(void)
-{
-	return AF.low >> 7;
-}
-
-uint8_t get_nflag(void)
-{
-	return AF.low >> 6 & 1;
-}
-
-uint8_t get_hflag(void)
-{
-	return AF.low >> 5 & 1;
-}
-
-uint8_t get_cflag(void)
-{
-	return AF.low >> 4 & 1;
+	return AF.low & flag;
 }
 
 void push_stack(uint8_t low, uint8_t high)
@@ -119,6 +79,19 @@ uint16_t pop_stack(void)
 	SP += 2;
 
 	return value;
+}
+
+static void handle_mbc(uint16_t addr, uint8_t value)
+{
+	switch (mode) {
+	case ROM:
+		break;
+	case MBC1:
+		write_mbc1(addr, value);
+		break;
+	default:
+		return;
+	}
 }
 
 void init_cpu(void)
@@ -173,26 +146,26 @@ static void op0x03(void)
 static void op0x04(void)
 {
 	if (BC.high & 0x0F == 15)
-		set_hflag();
-	
+		set_flag(HFLAG);
+
 	BC.high++;
 	if (BC.high == 0)
-		set_zflag();
-	
-	reset_nflag();
+		set_flag(ZFLAG);
+
+	reset_flag(NFLAG);
 }
 
 /* DEC B */
 static void op0x05(void)
 {
 	if (BC.high & 0x0F != 0)
-		set_hflag();
-	
+		set_flag(HFLAG);
+
 	BC.high--;
 	if (BC.high == 0)
-		set_zflag();
-	
-	set_nflag();
+		set_flag(ZFLAG);
+
+	set_flag(NFLAG);
 }
 
 /* LD B,n */
@@ -205,25 +178,25 @@ static void op0x06(void)
 static void op0x07(void)
 {
 	if (AF.high > 127){
-		set_cflag();
+		set_flag(CFLAG);
 	}
 
 	AF.high <<= 1;
-	AF.high += get_cflag();
+	AF.high += get_flag(CFLAG);
 
 	if (AF.high == 0)
-		set_zflag();
+		set_flag(ZFLAG);
 
-	reset_nflag();
-	reset_hflag();
+	reset_flag(NFLAG);
+	reset_flag(HFLAG);
 }
 
 /* LD nn,SP */
 static void op0x08(void)
 {
 	uint16_t addr = fetch_16bit_data();
-	writememory(addr, SP & 0x00FF);
-	writememory(addr+1, SP >> 8);
+	write_memory(addr, SP & 0x00FF);
+	write_memory(addr+1, SP >> 8);
 }
 
 /* ADD HL,BC */
@@ -233,7 +206,7 @@ static void op0x09(void)
 	tmp <<= 8;
 	tmp += HL.low + BC.low;
 	if (tmp > 65535)
-		set_cflag();
+		set_flag(CFLAG);
 
 	HL.high = tmp >> 8;
 	HL.low = tmp;
@@ -242,10 +215,9 @@ static void op0x09(void)
 	tmp <<= 8;
 	tmp += HL.low + BC.low;
 	if (tmp > 4095)
-		set_hflag();
+		set_flag(HFLAG);
 
-	reset_nflag();
-
+	reset_flag(NFLAG);
 }
 
 /* LD A,BC */
@@ -259,35 +231,35 @@ static void op0x0B(void)
 {
 	if (BC.low == 0)
 		BC.high--;
-	
+
 	BC.low--;
-	
+
 }
 
 /* INC C */
 static void op0x0C(void)
 {
 	if (BC.low & 0x0F == 15)
-		set_hflag();
-	
+		set_flag(HFLAG);
+
 	BC.low++;
 	if (BC.low == 0)
-		set_zflag();
-	
-	reset_nflag();
+		set_flag(ZFLAG);
+
+	reset_flag(NFLAG);
 }
 
 /* DEC C */
 static void op0x0D(void)
 {
 	if (BC.low & 0x0F != 0)
-		set_hflag();
-	
+		set_flag(HFLAG);
+
 	BC.low--;
 	if (BC.low == 0)
-		set_zflag();
-	
-	set_nflag();
+		set_flag(ZFLAG);
+
+	set_flag(NFLAG);
 }
 
 /* LD C,n */
@@ -300,16 +272,16 @@ static void op0x0E(void)
 static void op0x0F(void)
 {
 	if (AF.high & 1)
-		set_cflag();
-	
+		set_flag(CFLAG);
+
 	AF.high >>= 1;
-	AF.high += get_cflag() * 128;
-	
+	AF.high += get_flag(CFLAG) * 128;
+
 	if (AF.high == 0)
-		set_zflag();
-	
-	reset_hflag();
-	reset_nflag();
+		set_flag(ZFLAG);
+
+	reset_flag(HFLAG);
+	reset_flag(NFLAG);
 }
 
 static void op0x10(void)
@@ -345,12 +317,12 @@ static void op0x13(void)
 static void op0x14(void)
 {
 	if (DE.high & 0x0F == 15)
-		set_hflag();
-	
+		set_flag(HFLAG);
+
 	DE.high++;
 	if (DE.high == 0)
-		set_zflag();
-	
+		set_flag(ZFLAG);
+
 	reset_nflag();
 }
 
@@ -358,13 +330,13 @@ static void op0x14(void)
 static void op0x15(void)
 {
 	if (DE.high & 0x0F != 0)
-		set_hflag();
-	
+		set_flag(HFLAG);
+
 	DE.high--;
 	if (DE.high == 0)
-		set_zflag();
-	
-	set_nflag();
+		set_flag(ZFLAG);
+
+	set_flag(NFLAG);
 }
 
 /* LD D,n */
@@ -405,12 +377,12 @@ static void init_optable(void)
 	optable[0x0C] = op0x0C;
 	optable[0x0D] = op0x0D;
 	optable[0x0E] = op0x0E;
-	optable[0x0F] = op0x0F;	
+	optable[0x0F] = op0x0F;
+	optable[0x10] = op0x10;
 	optable[0x11] = op0x11;
 	optable[0x12] = op0x12;
 	optable[0x13] = op0x13;
 	optable[0x14] = op0x14;
 	optable[0x15] = op0x15;
 	optable[0x16] = op0x16;
-	
 }
