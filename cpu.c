@@ -367,6 +367,12 @@ static void op0x15(void)
 	set_nflag();
 }
 
+/* LD D,n */
+static void op0x16(void)
+{
+	DE.high = fetch_8bit_data();
+}
+
 /* INC HL */
 static void op0x23(void)
 {
@@ -403,5 +409,8 @@ static void init_optable(void)
 	optable[0x11] = op0x11;
 	optable[0x12] = op0x12;
 	optable[0x13] = op0x13;
+	optable[0x14] = op0x14;
+	optable[0x15] = op0x15;
+	optable[0x16] = op0x16;
 	
 }
