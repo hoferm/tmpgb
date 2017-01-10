@@ -145,7 +145,7 @@ static void op0x03(void)
 /* INC B */
 static void op0x04(void)
 {
-	if (BC.high & 0x0F == 15)
+	if ((BC.high & 0x0F) == 15)
 		set_flag(HFLAG);
 
 	BC.high++;
@@ -158,7 +158,7 @@ static void op0x04(void)
 /* DEC B */
 static void op0x05(void)
 {
-	if (BC.high & 0x0F != 0)
+	if ((BC.high & 0x0F) != 0)
 		set_flag(HFLAG);
 
 	BC.high--;
@@ -239,7 +239,7 @@ static void op0x0B(void)
 /* INC C */
 static void op0x0C(void)
 {
-	if (BC.low & 0x0F == 15)
+	if ((BC.low & 0x0F) == 15)
 		set_flag(HFLAG);
 
 	BC.low++;
@@ -252,7 +252,7 @@ static void op0x0C(void)
 /* DEC C */
 static void op0x0D(void)
 {
-	if (BC.low & 0x0F != 0)
+	if ((BC.low & 0x0F) != 0)
 		set_flag(HFLAG);
 
 	BC.low--;
@@ -316,7 +316,7 @@ static void op0x13(void)
 /* INC D */
 static void op0x14(void)
 {
-	if (DE.high & 0x0F == 15)
+	if ((DE.high & 0x0F) == 15)
 		set_flag(HFLAG);
 
 	DE.high++;
@@ -329,7 +329,7 @@ static void op0x14(void)
 /* DEC D */
 static void op0x15(void)
 {
-	if (DE.high & 0x0F != 0)
+	if ((DE.high & 0x0F) != 0)
 		set_flag(HFLAG);
 
 	DE.high--;
@@ -346,7 +346,7 @@ static void op0x16(void)
 }
 
 /* RLA */
-static void op0x017(void)
+static void op0x17(void)
 {
 	uint8_t tmp = get_flag(CFLAG);
 	if (AF.high > 127){
@@ -408,7 +408,7 @@ static void op0x1B(void)
 /* INC E */
 static void op0x1C(void)
 {
-	if (DE.low & 0x0F == 15)
+	if ((DE.low & 0x0F) == 15)
 		set_flag(HFLAG);
 
 	DE.low++;
@@ -421,7 +421,7 @@ static void op0x1C(void)
 /* DEC E */
 static void op0x1D(void)
 {
-	if (DE.low & 0x0F != 0)
+	if ((DE.low & 0x0F) != 0)
 		set_flag(HFLAG);
 
 	DE.low--;
@@ -503,4 +503,6 @@ static void init_optable(void)
 	optable[0x1D] = op0x1D;
 	optable[0x1E] = op0x1E;
 	optable[0x1F] = op0x1F;
+	optable[0x23] = op0x23;
+	optable[0x33] = op0x33;
 }
