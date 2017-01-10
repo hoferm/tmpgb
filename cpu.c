@@ -59,7 +59,7 @@ static void reset_flag(uint8_t flag)
 
 static uint8_t get_flag(uint8_t flag)
 {
-	return AF.low & flag;
+	return (AF.low & flag) ? 1 : 0;
 }
 
 void push_stack(uint8_t low, uint8_t high)
@@ -174,7 +174,7 @@ static void op0x06(void)
 	BC.high = fetch_8bit_data();
 }
 
-/* RLCA A */
+/* RLCA */
 static void op0x07(void)
 {
 	if (AF.high > 127){
@@ -323,7 +323,7 @@ static void op0x14(void)
 	if (DE.high == 0)
 		set_flag(ZFLAG);
 
-	reset_nflag();
+	reset_flag(NFLAG);
 }
 
 /* DEC D */
@@ -343,6 +343,115 @@ static void op0x15(void)
 static void op0x16(void)
 {
 	DE.high = fetch_8bit_data();
+}
+
+/* RLA */
+static void op0x017(void)
+{
+	uint8_t tmp = get_flag(CFLAG);
+	if (AF.high > 127){
+		set_flag(CFLAG);
+	}
+
+	AF.high <<= 1;
+	AF.high += tmp;
+
+	if (AF.high == 0)
+		set_flag(ZFLAG);
+
+	reset_flag(NFLAG);
+	reset_flag(HFLAG);
+}
+
+/* JR n */
+static void op0x18(void)
+{
+	PC += fetch_8bit_data();
+}
+
+/* ADD HL,DE */
+static void op0x19(void)
+{
+	int tmp = HL.high + DE.high;
+	tmp <<= 8;
+	tmp += HL.low + DE.low;
+	if (tmp > 65535)
+		set_flag(CFLAG);
+
+	HL.high = tmp >> 8;
+	HL.low = tmp;
+	tmp = HL.high + DE.high;
+	tmp &= 0x0F;
+	tmp <<= 8;
+	tmp += HL.low + DE.low;
+	if (tmp > 4095)
+		set_flag(HFLAG);
+
+	reset_flag(NFLAG);
+}
+
+/* LD A,DE */
+static void op0x1A(void)
+{
+	AF.high = DE.low;
+}
+
+/* DEC DE */
+static void op0x1B(void)
+{
+	if (DE.low == 0)
+		DE.high--;
+
+	DE.low--;
+}
+
+/* INC E */
+static void op0x1C(void)
+{
+	if (DE.low & 0x0F == 15)
+		set_flag(HFLAG);
+
+	DE.low++;
+	if (DE.low == 0)
+		set_flag(ZFLAG);
+
+	reset_flag(NFLAG);
+}
+
+/* DEC E */
+static void op0x1D(void)
+{
+	if (DE.low & 0x0F != 0)
+		set_flag(HFLAG);
+
+	DE.low--;
+	if (DE.low == 0)
+		set_flag(ZFLAG);
+
+	set_flag(NFLAG);
+}
+
+/* LD E,n */
+static void op0x1E(void)
+{
+	DE.low = fetch_8bit_data();
+}
+
+/* RRA */
+static void op0x1F(void)
+{
+	uint8_t tmp = get_flag(CFLAG);
+	if (AF.high & 1)
+		set_flag(CFLAG);
+
+	AF.high >>= 1;
+	AF.high += tmp * 128;
+
+	if (AF.high == 0)
+		set_flag(ZFLAG);
+
+	reset_flag(HFLAG);
+	reset_flag(NFLAG);
 }
 
 /* INC HL */
@@ -385,4 +494,13 @@ static void init_optable(void)
 	optable[0x14] = op0x14;
 	optable[0x15] = op0x15;
 	optable[0x16] = op0x16;
+	optable[0x17] = op0x17;
+	optable[0x18] = op0x18;
+	optable[0x19] = op0x19;
+	optable[0x1A] = op0x1A;
+	optable[0x1B] = op0x1B;
+	optable[0x1C] = op0x1C;
+	optable[0x1D] = op0x1D;
+	optable[0x1E] = op0x1E;
+	optable[0x1F] = op0x1F;
 }
