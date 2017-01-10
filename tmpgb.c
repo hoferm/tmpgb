@@ -4,7 +4,7 @@
 #include "error.h"
 #include "memory.h"
 
-#define READ_SIZE 16384
+#define READ_SIZE 0x4000
 
 static void usage(void)
 {
