@@ -17,6 +17,7 @@ static void load_rom(const char *rom)
 	FILE *fp;
 	unsigned char *buffer[READ_SIZE];
 	size_t nread;
+	int i = -1;
 
 	fp = fopen(rom, "rb");
 
@@ -25,17 +26,19 @@ static void load_rom(const char *rom)
 		exit(EXIT_FAILURE);
 	}
 
-	nread = fread(buffer, READ_SIZE, 1, fp);
+	while (!feof(fp)) {
+		nread = fread(buffer, READ_SIZE, 1, fp);
 
-	if (nread == 0) {
-		if (ferror(fp)) {
-			fprintf(stderr, "Error reading %s", rom);
-			exit(EXIT_FAILURE);
+		if (nread == 0) {
+			if (ferror(fp)) {
+				fprintf(stderr, "Error reading %s", rom);
+				exit(EXIT_FAILURE);
+			}
 		}
+		read_rom(buffer, i);
 	}
 
 	fclose(fp);
-	read_rom(buffer);
 }
 
 static void run(void)
