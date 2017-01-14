@@ -20,17 +20,20 @@
 
 struct {
 	u8 rom[0x4000]; /* 0x0000 - 0x3FFF */
-	u8 rom_banks[512][0x4000]; /* 0x4000 - 0x7FFF */
+	u8 rom_bank[512][0x4000]; /* 0x4000 - 0x7FFF */
 	u8 vram[0x2000]; /* 0x8000 - 0x9FFF */
-	u8 ram_banks[16][0x2000]; /* 0xA000 - 0xBFFF */
+	u8 ram_bank[16][0x2000]; /* 0xA000 - 0xBFFF */
 	u8 wram[0x2000]; /* 0xC000 - 0xDFFF */
 
-	u8 interrupt_enable; /* 0xFFFF - First 5 bits used*/
+	u8 interrupt_enable; /* 0xFFFF - First 5 bits used */
 
 	int mbc_mode;
 
-	u8 *curr_rom;
-	u8 *curr_ram;
+	u8 selected_rom;
+	u8 *curr_rom; /* Pointer to current selected rom bank. */
+	u8 *curr_ram; /* Pointer to current selected ram bank. */
+
+	u8 ram_enable;
 
 } memory;
 
@@ -77,33 +80,63 @@ static int check_complement(void)
 	return 0;
 }
 
-void read_rom(const u8 *buffer)
+void read_rom(const u8 *buffer, int count)
 {
-#ifdef DEBUG
-	int i;
-
-	for (i = 0x104; i < 0x134; ++i) {
-		printf("%.2X\n", memory.rom[i]);
+	if (count != -1) {
+		memcpy(memory.rom_bank[count], buffer, 0x4000);
+	} else {
+		memcpy(memory.rom, buffer, 0x4000);
 	}
-#endif
-	memcpy(memory.rom, buffer, 0x4000);
+}
+
+static void change_mbc_mode(u8 value)
+{
+	u8 tmp = value & 0x01;
+
+	if (memory.mbc_mode != tmp) {
+		if (tmp == 0) {
+			memory.curr_ram = memory.ram_bank[0];
+		} else {
+			memory.selected_rom &= 0x1F;
+			memory.curr_rom = memory.rom_bank[memory.selected_rom];
+		}
+
+		memory.mbc_mode = tmp;
+	}
 }
 
 void write_memory(u16 address, u8 value)
 {
 	u16 offset;
+	u8 bank;
 
 	switch (address >> 12) {
 	case 0x0:
 	case 0x1:
+		memory.ram_enable = enable_ram();
 	case 0x2:
 	case 0x3:
+		if (address >= 0x2000) {
+			bank = select_rom_bank(value);
+			selected_rom = bank;
+			memory.curr_rom = memory.rom_bank[bank];
+		}
 		memory.rom[address] = value;
 		break;
 	case 0x4:
 	case 0x5:
+		bank = select_ram_bank(value);
+		if (memory.mbc_mode == 1) {
+			memory.curr_ram = memory.ram_bank[bank];
+		} else {
+			memory.selected_rom += (bank << 5);
+			memory.curr_rom = memory.rom_bank[memory.selected_rom];
+		}
 	case 0x6:
 	case 0x7:
+		if (address >= 0x6000) {
+			change_mbc_mode();
+		}
 		offset = address % MEM_ROM;
 
 		memory.curr_rom[offset] = value;
@@ -129,7 +162,7 @@ void write_memory(u16 address, u8 value)
 	case 0xE:
 	case 0xF:
 		if (address <= 0xFDFF) {
-			offset = address % 0xC000;
+			offset = (address % MEM_WRAM) - 0x2000;
 			memory.wram[offset] = value;
 		} else if (address <= 0xFE9F) {
 
@@ -211,14 +244,6 @@ u8 read_memory(u16 address)
 	return ret;
 }
 
-void write_mbc1(u16 addr, u8 value)
-{
-	switch (addr & 0xE000) {
-	case 0x2000:
-		break;
-	}
-}
-
 int init_memory(void)
 {
 	int ret = 0;
@@ -266,6 +291,10 @@ int init_memory(void)
 	write_memory(0xFFFF, 0x00);
 
 	mode = memory.rom[CART_TYPE];
+
+	memory.selected_rom = 0;
+	memory.curr_rom = memory.rom_bank[0];
+	memory.curr_ram = memory.ram_bank[0];
 
 out:
 	return ret;
