@@ -1,5 +1,6 @@
 #include <stdint.h>
 
+#include "gameboy.h"
 #include "memory.h"
 
 #define ZFLAG 0x80
@@ -10,18 +11,20 @@
 static void init_optable(void);
 
 struct reg {
-	uint8_t high;
-	uint8_t low;
+	u8 high;
+	u8 low;
 } AF, BC, DE, HL;
 
-uint16_t PC;
-uint16_t SP;
+u16 PC;
+u16 SP;
+
+static int clock_count = 0;
 
 void (*optable[512])(void);
 
-uint8_t fetch_8bit_data(void)
+u8 fetch_8bit_data(void)
 {
-	uint8_t data;
+	u8 data;
 
 	data = read_memory(PC);
 	PC++;
@@ -29,9 +32,9 @@ uint8_t fetch_8bit_data(void)
 	return data;
 }
 
-uint16_t fetch_16bit_data(void)
+u16 fetch_16bit_data(void)
 {
-	uint16_t data;
+	u16 data;
 
 	data = read_memory(PC) + (read_memory(PC + 1) << 8);
 	PC = PC + 2;
@@ -41,43 +44,43 @@ uint16_t fetch_16bit_data(void)
 
 void fetch_opcode(void)
 {
-	uint8_t opcode;
+	u8 opcode;
 
 	opcode = read_memory(PC);
 	PC++;
 }
 
-void execute_opcode(uint8_t opcode)
+void execute_opcode(u8 opcode)
 {
 	optable[opcode]();
 }
 
-static void set_flag(uint8_t flag)
+static void set_flag(u8 flag)
 {
 	AF.low |= flag;
 }
 
-static void reset_flag(uint8_t flag)
+static void reset_flag(u8 flag)
 {
 	AF.low &= (0xFF - flag);
 }
 
-static uint8_t get_flag(uint8_t flag)
+static u8 get_flag(u8 flag)
 {
 	return (AF.low & flag) ? 1 : 0;
 }
 
-void push_stack(uint8_t low, uint8_t high)
+void push_stack(u8 low, u8 high)
 {
 	write_memory(SP, high);
 	write_memory(SP - 1, low);
 
-	SP -= 2;
+	SP -= 1;
 }
 
-uint16_t pop_stack(void)
+u16 pop_stack(void)
 {
-	uint16_t value;
+	u16 value;
 	value = read_memory(SP);
 	value += (read_memory(SP + 1) << 8);
 
@@ -86,17 +89,84 @@ uint16_t pop_stack(void)
 	return value;
 }
 
-static void handle_mbc(uint16_t addr, uint8_t value)
+static void add(u8 val)
 {
-	switch (mode) {
-	case ROM:
-		break;
-	case MBC1:
-		write_mbc1(addr, value);
-		break;
-	default:
-		return;
-	}
+	u16 res = AF.high + val;
+
+	if (res == 0)
+		set_flag(ZFLAG);
+
+	reset_flag(NFLAG);
+
+	if ((AF.high ^ val ^ res) & 0x10)
+		set_flag(HFLAG);
+
+	if (res > 255)
+		set_flag(CFLAG);
+
+	AF.high = res;
+}
+
+static void and_a_r8(u8 reg)
+{
+	AF.high &= reg;
+
+	if (AF.high == 0)
+		set_flag(ZFLAG);
+
+	set_flag(HFLAG);
+	reset_flag(NFLAG);
+	reset_flag(CFLAG);
+}
+
+static void xor_a_r8(u8 reg)
+{
+	AF.high ^= reg;
+
+	if (AF.high == 0)
+		set_flag(ZFLAG);
+
+	reset_flag(NFLAG);
+	reset_flag(HFLAG);
+	reset_flag(CFLAG);
+}
+
+static void or_a(u8 val)
+{
+	AF.high |= val;
+
+	if (AF.high == 0)
+		set_flag(ZFLAG);
+
+	reset_flag(NFLAG);
+	reset_flag(HFLAG);
+	reset_flag(CFLAG);
+}
+
+static void cmp(u8 val)
+{
+	u8 tmp = AF.high - val;
+
+	if (tmp == 0)
+		set_flag(ZFLAG);
+
+	set_flag(NFLAG);
+
+	if ((AF.high & 0F) < (val & 0F))
+		set_flag(HFLAG);
+
+	if (AF.high < val)
+		set_flag(CFLAG);
+}
+
+static void rst(u8 offset)
+{
+	u8 low = PC & 0xFF;
+	u8 high = PC >> 8;
+
+	push_stack(low, high);
+
+	PC = 0x0000 + offset;
 }
 
 void init_cpu(void)
@@ -125,7 +195,7 @@ static void op0x00(void)
 /* LD BC,nn */
 static void op0x01(void)
 {
-	uint16_t temp = fetch_16bit_data();
+	u16 temp = fetch_16bit_data();
 	BC.high = temp >> 8;
 	BC.low = temp;
 }
@@ -199,7 +269,7 @@ static void op0x07(void)
 /* LD nn,SP */
 static void op0x08(void)
 {
-	uint16_t addr = fetch_16bit_data();
+	u16 addr = fetch_16bit_data();
 	write_memory(addr, SP & 0x00FF);
 	write_memory(addr+1, SP >> 8);
 }
@@ -292,13 +362,13 @@ static void op0x0F(void)
 /* HALT */
 static void op0x10(void)
 {
-	
+
 }
 
 /* LD DE,nn */
 static void op0x11(void)
 {
-	uint16_t tmp = fetch_16bit_data();
+	u16 tmp = fetch_16bit_data();
 	DE.high = tmp >> 8;
 	DE.low = tmp;
 }
@@ -354,7 +424,7 @@ static void op0x16(void)
 /* RLA */
 static void op0x17(void)
 {
-	uint8_t tmp = get_flag(CFLAG);
+	u8 tmp = get_flag(CFLAG);
 	if (AF.high > 127){
 		set_flag(CFLAG);
 	}
@@ -446,7 +516,7 @@ static void op0x1E(void)
 /* RRA */
 static void op0x1F(void)
 {
-	uint8_t tmp = get_flag(CFLAG);
+	u8 tmp = get_flag(CFLAG);
 	if (AF.high & 1)
 		set_flag(CFLAG);
 
@@ -470,7 +540,7 @@ static void op0x20(void)
 /* LD HL,nn */
 static void op0x21(void)
 {
-	uint16_t tmp = fetch_16bit_data();
+	u16 tmp = fetch_16bit_data();
 	HL.high = tmp >> 8;
 	HL.low = tmp;
 }
@@ -478,7 +548,7 @@ static void op0x21(void)
 /* LDI (HL),A */
 static void op0x22(void)
 {
-	uint16_t tmp = HL.high;
+	u16 tmp = HL.high;
 	tmp <<= 8;
 	tmp += HL.low;
 	write_memory(tmp, AF.high);
@@ -529,7 +599,7 @@ static void op0x26(void)
 /* DAA */
 static void op0x27(void)
 {
-	
+
 }
 
 /* JR Z,n */
@@ -542,19 +612,19 @@ static void op0x28(void)
 /*  */
 static void op0x29(void)
 {
-	
+
 }
 
 /*  */
 static void op0x2A(void)
 {
-	
+
 }
 
 /*  */
 static void op0x2B(void)
 {
-	
+
 }
 
 /* INC L */
@@ -1077,52 +1147,53 @@ static void op0x7F(void)
 
 }
 
-/* */
+/* ADD A,B */
 static void op0x80(void)
 {
-
+	add(BC.high);
 }
 
-/* */
+/* ADD A,C */
 static void op0x81(void)
 {
-
+	add(BC.low);
 }
 
-/* */
+/* ADD A,D */
 static void op0x82(void)
 {
-
+	add(DE.high);
 }
 
-/* */
+/* ADD A,E */
 static void op0x83(void)
 {
-
+	add(DE.low);
 }
 
-/* */
+/* ADD A,H */
 static void op0x84(void)
 {
-
+	add(HL.high);
 }
 
-/* */
+/* ADD A,L */
 static void op0x85(void)
 {
-
+	add(HL.low);
 }
 
-/* */
+/* ADD A,(HL) */
 static void op0x86(void)
 {
-
+	u16 tmp = (HL.high << 8) + HL.low;
+	add(tmp);
 }
 
-/* */
+/* ADD A,A */
 static void op0x87(void)
 {
-
+	add(AF.high);
 }
 
 /* */
@@ -1269,256 +1340,278 @@ static void op0x9F(void)
 
 }
 
-/* */
+/* AND A,B */
 static void op0xA0(void)
 {
-
+	and_a_r8(BC.high);
 }
 
-/* */
+/* AND A,C */
 static void op0xA1(void)
 {
-
+	and_a_r8(BC.low);
 }
 
-/* */
+/* AND A,D */
 static void op0xA2(void)
 {
-
+	and_a_r8(DE.high);
 }
 
-/* */
+/* AND A,E */
 static void op0xA3(void)
 {
-
+	and_a_r8(DE.low);
 }
 
-/* */
+/* AND A,H */
 static void op0xA4(void)
 {
-
+	and_a_r8(HL.high);
 }
 
-/* */
+/* AND A,L */
 static void op0xA5(void)
 {
-
+	and_a_r8(HL.low);
 }
 
-/* */
+/* AND A,(HL)*/
 static void op0xA6(void)
 {
-
+	u16 tmp = (HL.high << 8) + HL.low;
+	and_a_r8(read_memory(tmp));
 }
 
-/* */
+/* AND A,A */
 static void op0xA7(void)
 {
-
+	and_a_r8(AF.high);
 }
 
-/* */
+/* XOR A,B */
 static void op0xA8(void)
 {
-
+	xor_a_r8(BC.high);
 }
 
-/* */
+/* XOR A,C */
 static void op0xA9(void)
 {
-
+	xor_a_r8(BC.low);
 }
 
-/* */
+/* XOR A,D */
 static void op0xAA(void)
 {
-
+	xor_a_r8(DE.high);
 }
 
-/* */
+/* XOR A,E */
 static void op0xAB(void)
 {
-
+	xor_a_r8(DE.low);
 }
 
-/* */
+/* XOR A,H */
 static void op0xAC(void)
 {
-
+	xor_a_r8(HL.high);
 }
 
-/* */
+/* XOR A,L */
 static void op0xAD(void)
 {
-
+	xor_a_r8(HL.low);
 }
 
-/* */
+/* XOR A,(HL) */
 static void op0xAE(void)
 {
-
+	u16 tmp = (HL.high << 8) + HL.low;
+	xor_a_r8(read_memory(tmp));
 }
 
-/* */
+/* XOR A,A */
 static void op0xAF(void)
 {
-
+	return;
 }
 
-/* */
+/* OR A,B  */
 static void op0xB0(void)
 {
-
+	or_a(BC.high);
 }
 
-/* */
+/* OR A,C */
 static void op0xB1(void)
 {
-
+	or_a(BC.low);
 }
 
-/* */
+/* OR A,D */
 static void op0xB2(void)
 {
-
+	or_a(DE.high);
 }
 
-/* */
+/* OR A,E */
 static void op0xB3(void)
 {
-
+	or_a(DE.low);
 }
 
-/* */
+/* OR A,H */
 static void op0xB4(void)
 {
-
+	or_a(HL.high);
 }
 
-/* */
+/* OR A,L */
 static void op0xB5(void)
 {
-
+	or_a(HL.low);
 }
 
-/* */
+/* OR A,(HL) */
 static void op0xB6(void)
 {
-
+	u8 tmp = (HL.high << 8) + HL.low;
+	or_a(read_memory(tmp));
 }
 
-/* */
+/* OR A,A */
 static void op0xB7(void)
 {
-
+	or_a(AF.high);
 }
 
-/* */
+/* CP A,B */
 static void op0xB8(void)
 {
-
+	cmp(BC.high);
 }
 
-/* */
+/* CP A,C */
 static void op0xB9(void)
 {
-
+	cmp(BC.low);
 }
 
-/* */
+/* CP A,D */
 static void op0xBA(void)
 {
-
+	cmp(DE.high);
 }
 
-/* */
+/* CP A,E */
 static void op0xBB(void)
 {
-
+	cmp(DE.low);
 }
 
-/* */
+/* CP A,H */
 static void op0xBC(void)
 {
-
+	cmp(HL.high);
 }
 
-/* */
+/* CP A,L */
 static void op0xBD(void)
 {
-
+	cmp(HL.low);
 }
 
-/* */
+/* CP A,(HL) */
 static void op0xBE(void)
 {
-
+	u16 tmp = (HL.high << 8) + HL.low;
+	cmp(read_memory(tmp));
 }
 
-/* */
+/* CP A,A */
 static void op0xBF(void)
 {
-
+	cmp(AF.high);
 }
 
-/* */
+/* RET NZ */
 static void op0xC0(void)
 {
-
+	if (get_flag(ZFLAG))
+		PC = pop_stack();
 }
 
-/* */
+/* POP BC*/
 static void op0xC1(void)
 {
+	u16 tmp = pop_stack();
 
+	BC.high = tmp >> 8;
+	BC.low = tmp;
 }
 
-/* */
+/* JP NZ,nn */
 static void op0xC2(void)
 {
-
+	if (!get_flag(ZFLAG)) {
+		u16 address = fetch_16bit_data();
+		PC = address;
+	}
 }
 
-/* */
+/* JP nn */
 static void op0xC3(void)
 {
-
+	u16 address = fetch_16bit_data();
+	PC = address;
 }
 
-/* */
+/* CALL NZ,nn */
 static void op0xC4(void)
 {
+	u8 low = PC & 0xFF;
+	u8 high = PC >> 8;
+	u16 address;
 
+	if (get_flag(ZFLAG)) {
+		push_stack(low, high);
+		address = fetch_16bit_data();
+		PC = address;
+	}
 }
 
-/* */
+/* PUSH BC */
 static void op0xC5(void)
 {
-
+	push_stack(BC.low, BC.high);
 }
 
-/* */
+/* ADD A,n */
 static void op0xC6(void)
 {
-
+	u8 tmp = fetch_8bit_data();
+	add(tmp);
 }
 
-/* */
+/* RST 0x00 */
 static void op0xC7(void)
 {
-
+	rst(0x00);
 }
 
-/* */
+/* RET Z */
 static void op0xC8(void)
 {
-
+	if (get_flag(ZFLAG))
+		PC = pop_stack();
 }
 
-/* */
+/* RET */
 static void op0xC9(void)
 {
-
+	PC = pop_stack();
 }
 
 /* */
@@ -1689,10 +1782,11 @@ static void op0xE5(void)
 
 }
 
-/* */
+/* AND A,n */
 static void op0xE6(void)
 {
-
+	u8 tmp = fetch_8bit_data();
+	and_a_r8(tmp);
 }
 
 /* */
@@ -1737,10 +1831,11 @@ static void op0xED(void)
 
 }
 
-/* */
+/* XOR A,n */
 static void op0xEE(void)
 {
-
+	u8 tmp = fetch_8bit_data();
+	xor_a_r8(tmp);
 }
 
 /* */
@@ -1785,10 +1880,11 @@ static void op0xF5(void)
 
 }
 
-/* */
+/* OR A,n */
 static void op0xF6(void)
 {
-
+	u8 tmp = fetch_8bit_data();
+	or_a(tmp);
 }
 
 /* */
@@ -1833,10 +1929,11 @@ static void op0xFD(void)
 
 }
 
-/* */
+/* CP A,n */
 static void op0xFE(void)
 {
-
+	u8 tmp = fetch_8bit_data();
+	cmp(tmp);
 }
 
 /* */
