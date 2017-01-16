@@ -72,10 +72,11 @@ static u8 get_flag(u8 flag)
 
 void push_stack(u8 low, u8 high)
 {
+	SP--;
 	write_memory(SP, high);
-	write_memory(SP - 1, low);
+	SP--;
+	write_memory(SP, low);
 
-	SP -= 1;
 }
 
 u16 pop_stack(void)
