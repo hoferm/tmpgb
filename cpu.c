@@ -482,7 +482,9 @@ static void op0x22(void)
 	tmp <<= 8;
 	tmp += HL.low;
 	write_memory(tmp, AF.high);
-	op0x23();
+	HL.low++;
+	if (HL.low == 0)
+		HL.high++;
 }
 
 /* INC HL */
