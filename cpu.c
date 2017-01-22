@@ -91,8 +91,11 @@ u16 pop_stack(void)
 	return value;
 }
 
-static void add(u8 val)
+static void add(u8 val, int with_carry)
 {
+	if (with_carry)
+		val++;
+
 	u16 res = AF.high + val;
 
 	if (res == 0)
@@ -1154,50 +1157,50 @@ static void op0x7F(void)
 /* ADD A,B */
 static void op0x80(void)
 {
-	add(BC.high);
+	add(BC.high, 0);
 }
 
 /* ADD A,C */
 static void op0x81(void)
 {
-	add(BC.low);
+	add(BC.low, 0);
 }
 
 /* ADD A,D */
 static void op0x82(void)
 {
-	add(DE.high);
+	add(DE.high, 0);
 }
 
 /* ADD A,E */
 static void op0x83(void)
 {
-	add(DE.low);
+	add(DE.low, 0);
 }
 
 /* ADD A,H */
 static void op0x84(void)
 {
-	add(HL.high);
+	add(HL.high, 0);
 }
 
 /* ADD A,L */
 static void op0x85(void)
 {
-	add(HL.low);
+	add(HL.low, 0);
 }
 
 /* ADD A,(HL) */
 static void op0x86(void)
 {
 	u16 tmp = (HL.high << 8) + HL.low;
-	add(tmp);
+	add(tmp, 0);
 }
 
 /* ADD A,A */
 static void op0x87(void)
 {
-	add(AF.high);
+	add(AF.high, 0);
 }
 
 /* */
@@ -1597,7 +1600,7 @@ static void op0xC5(void)
 static void op0xC6(void)
 {
 	u8 tmp = fetch_8bit_data();
-	add(tmp);
+	add(tmp, 0);
 }
 
 /* RST 0x00 */
@@ -1664,10 +1667,11 @@ static void op0xCD(void)
 	PC = address;
 }
 
-/* */
+/* ADC A,n */
 static void op0xCE(void)
 {
-
+	u8 tmp = fetch_8bit_data();
+	add(tmp, 1);
 }
 
 /* RST 0x08 */
