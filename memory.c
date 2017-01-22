@@ -118,7 +118,7 @@ void write_memory(u16 address, u8 value)
 	case 0x3:
 		if (address >= 0x2000) {
 			bank = select_rom_bank(value);
-			selected_rom = bank;
+			memory.selected_rom = bank;
 			memory.curr_rom = memory.rom_bank[bank];
 		}
 		memory.rom[address] = value;
@@ -135,7 +135,7 @@ void write_memory(u16 address, u8 value)
 	case 0x6:
 	case 0x7:
 		if (address >= 0x6000) {
-			change_mbc_mode();
+			change_mbc_mode(value);
 		}
 		offset = address % MEM_ROM;
 
