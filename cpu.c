@@ -9,6 +9,7 @@
 #define CFLAG 0x10
 
 static void init_optable(void);
+static void init_cb_optable(void);
 
 struct reg {
 	u8 high;
@@ -21,6 +22,7 @@ u16 SP;
 static int clock_count = 0;
 
 void (*optable[512])(void);
+void (*cb_optable[512])(void);
 
 u8 fetch_8bit_data(void)
 {
@@ -76,7 +78,6 @@ void push_stack(u8 low, u8 high)
 	write_memory(SP, high);
 	SP--;
 	write_memory(SP, low);
-
 }
 
 u16 pop_stack(void)
@@ -153,7 +154,7 @@ static void cmp(u8 val)
 
 	set_flag(NFLAG);
 
-	if ((AF.high & 0F) < (val & 0F))
+	if ((AF.high & 0xF) < (val & 0xF))
 		set_flag(HFLAG);
 
 	if (AF.high < val)
@@ -1542,7 +1543,7 @@ static void op0xBF(void)
 /* RET NZ */
 static void op0xC0(void)
 {
-	if (get_flag(ZFLAG))
+	if (!get_flag(ZFLAG))
 		PC = pop_stack();
 }
 
@@ -1558,8 +1559,9 @@ static void op0xC1(void)
 /* JP NZ,nn */
 static void op0xC2(void)
 {
+	u16 address;
 	if (!get_flag(ZFLAG)) {
-		u16 address = fetch_16bit_data();
+		address = fetch_16bit_data();
 		PC = address;
 	}
 }
@@ -1578,7 +1580,7 @@ static void op0xC4(void)
 	u8 high = PC >> 8;
 	u16 address;
 
-	if (get_flag(ZFLAG)) {
+	if (!get_flag(ZFLAG)) {
 		push_stack(low, high);
 		address = fetch_16bit_data();
 		PC = address;
@@ -1617,28 +1619,49 @@ static void op0xC9(void)
 	PC = pop_stack();
 }
 
-/* */
+/* JP Z,nn */
 static void op0xCA(void)
 {
+	u16 address;
 
+	if (get_flag(ZFLAG)) {
+		address = fetch_16bit_data();
+		PC = address;
+	}
 }
 
-/* */
+/* CB Prefix */
 static void op0xCB(void)
 {
+	u8 cb_opcode = fetch_8bit_data();
 
+	cb_optable[cb_opcode]();
 }
 
-/* */
+/* CALL Z,nn */
 static void op0xCC(void)
 {
+	u8 low = PC & 0xFF;
+	u8 high = PC >> 8;
+	u16 address;
 
+	if (get_flag(ZFLAG)) {
+		push_stack(low, high);
+		address = fetch_16bit_data();
+		PC = address;
+	}
 }
 
-/* */
+/* CALL nn */
 static void op0xCD(void)
 {
+	u8 low = PC & 0xFF;
+	u8 high = PC >> 8;
+	u16 address = fetch_16bit_data();
 
+	push_stack(low, high);
+
+	PC = address;
 }
 
 /* */
@@ -1647,10 +1670,10 @@ static void op0xCE(void)
 
 }
 
-/* */
+/* RST 0x08 */
 static void op0xCF(void)
 {
-
+	rst(0x08);
 }
 
 /* */
@@ -1665,10 +1688,15 @@ static void op0xD1(void)
 
 }
 
-/* */
+/* JP NC,nn */
 static void op0xD2(void)
 {
+	u16 address;
 
+	if (!get_flag(CFLAG)) {
+		address = fetch_16bit_data();
+		PC = address;
+	}
 }
 
 /* */
@@ -1713,10 +1741,15 @@ static void op0xD9(void)
 
 }
 
-/* */
+/* JP C,nn */
 static void op0xDA(void)
 {
+	u16 address;
 
+	if (get_flag(CFLAG)) {
+		address = fetch_16bit_data();
+		PC = address;
+	}
 }
 
 /* */
