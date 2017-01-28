@@ -15,7 +15,7 @@ static void usage(void)
 static void load_rom(const char *rom)
 {
 	FILE *fp;
-	unsigned char *buffer[READ_SIZE];
+	unsigned char buffer[READ_SIZE];
 	size_t nread;
 	int i = -1;
 
