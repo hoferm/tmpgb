@@ -50,6 +50,8 @@ void fetch_opcode(void)
 
 	opcode = read_memory(PC);
 	PC++;
+
+	execute_opcode(opcode);
 }
 
 void execute_opcode(u8 opcode)
@@ -93,10 +95,12 @@ u16 pop_stack(void)
 
 static void add(u8 val, int with_carry)
 {
-	if (with_carry)
-		val++;
+	u16 res;
 
-	u16 res = AF.high + val;
+	if (with_carry)
+		val += get_flag(CFLAG);
+
+	res = AF.high + val;
 
 	if (res == 0)
 		set_flag(ZFLAG);
@@ -130,6 +134,27 @@ static void add_HL(u16 val)
 		set_flag(HFLAG);
 
 	reset_flag(NFLAG);
+}
+
+static void sub(u8 val, int with_carry)
+{
+	u8 res;
+
+	if (with_carry)
+		val += get_flag(CFLAG);
+
+	res = AF.high - val;
+
+	if (res == 0)
+		set_flag(ZFLAG);
+
+	set_flag(NFLAG);
+
+	if ((AF.high & 0xF) >= (val & 0xF))
+		set_flag(HFLAG);
+
+	if (AF.high >= val)
+		set_flag(CFLAG);
 }
 
 static void and(u8 val)
@@ -696,10 +721,10 @@ static void op0x32(void)
 	tmp <<= 8;
 	tmp += HL.low;
 	write_memory(tmp, AF.high);
-	
+
 	if (HL.low == 0)
 		HL.high--;
-	
+
 	HL.low--;
 }
 
@@ -717,11 +742,11 @@ static void op0x34(void)
 	tmp += HL.low;
 	if ((read_memory(tmp) & 0x0F) == 0x0F)
 		set_flag(HFLAG);
-	
+
 	write_memory(tmp, read_memory(tmp) + 1);
 	if (read_memory(tmp) == 0)
 		set_flag(ZFLAG);
-	
+
 	reset_flag(NFLAG);
 }
 
@@ -733,11 +758,11 @@ static void op0x35(void)
 	tmp += HL.low;
 	if ((read_memory(tmp) & 0x0F) == 0)
 		set_flag(HFLAG);
-	
+
 	write_memory(tmp, read_memory(tmp) - 1);
 	if (read_memory(tmp) == 0)
 		set_flag(ZFLAG);
-	
+
 	set_flag(NFLAG);
 }
 
@@ -798,7 +823,7 @@ static void op0x3D(void)
 /* */
 static void op0x3E(void)
 {
-	
+
 }
 
 /* CCF */
@@ -1720,16 +1745,24 @@ static void op0xCF(void)
 	rst(0x08);
 }
 
-/* */
+/* RET NC */
 static void op0xD0(void)
 {
+	u16 address;
 
+	if (!get_flag(CFLAG)) {
+		address = pop_stack();
+		PC = address;
+	}
 }
 
-/* */
+/* POP DE */
 static void op0xD1(void)
 {
+	u16 tmp = pop_stack();
 
+	DE.high = tmp >> 8;
+	DE.low = tmp;
 }
 
 /* JP NC,nn */
@@ -1743,46 +1776,64 @@ static void op0xD2(void)
 	}
 }
 
-/* */
+/* N/A */
 static void op0xD3(void)
 {
 
 }
 
-/* */
+/* CALL NC,nn */
 static void op0xD4(void)
 {
+	u8 low = PC & 0xFF;
+	u8 high = PC >> 8;
+	u16 address;
 
+	if (!get_flag(CFLAG)) {
+		push_stack(low, high);
+		address = fetch_16bit_data();
+		PC = address;
+	}
 }
 
-/* */
+/* PUSH DE */
 static void op0xD5(void)
 {
+	u8 low = DE.low;
+	u8 high = DE.high;
 
+	push_stack(low, high);
 }
 
-/* */
+/* SUB A,n */
 static void op0xD6(void)
 {
+	u8 tmp = fetch_8bit_data();
 
+	sub(tmp, 0);
 }
 
-/* */
+/* RST 0x10 */
 static void op0xD7(void)
 {
-
+	rst(0x10);
 }
 
-/* */
+/* RET C */
 static void op0xD8(void)
 {
+	u16 address;
 
+	if (get_flag(CFLAG)) {
+		address = pop_stack();
+		PC = address;
+	}
 }
 
-/* */
+/* RETI */
 static void op0xD9(void)
 {
-
+	/* Sets Interrupt Master Enable flag */
 }
 
 /* JP C,nn */
@@ -1796,70 +1847,88 @@ static void op0xDA(void)
 	}
 }
 
-/* */
+/* N/A */
 static void op0xDB(void)
 {
 
 }
 
-/* */
+/* CALL C,nn */
 static void op0xDC(void)
 {
+	u8 low = PC & 0xFF;
+	u8 high = PC >> 8;
+	u16 address;
 
+	if (get_flag(CFLAG)) {
+		push_stack(low, high);
+		address = fetch_16bit_data();
+		PC = address;
+	}
 }
 
-/* */
+/* N/A */
 static void op0xDD(void)
 {
 
 }
 
-/* */
+/* SBC A,n */
 static void op0xDE(void)
 {
+	u8 tmp = fetch_8bit_data();
 
+	sub(tmp, 1);
 }
 
-/* */
+/* RST 0x18 */
 static void op0xDF(void)
 {
-
+	rst(0x18);
 }
 
-/* */
+/* LDH (n),A */
 static void op0xE0(void)
 {
+	u16 address = fetch_8bit_data();
 
+	address += 0xFF00;
+
+	write_memory(address, AF.high);
 }
 
-/* */
+/* POP HL */
 static void op0xE1(void)
 {
+	u16 tmp = pop_stack();
 
+	HL.high = tmp >> 8;
+	HL.low = tmp;
 }
 
-/* */
+/* LD (C),A */
 static void op0xE2(void)
 {
-
+	u16 address = 0xFF00 + BC.low;
+	write_memory(address, AF.high);
 }
 
-/* */
+/* N/A */
 static void op0xE3(void)
 {
 
 }
 
-/* */
+/* N/A */
 static void op0xE4(void)
 {
 
 }
 
-/* */
+/* PUSH HL */
 static void op0xE5(void)
 {
-
+	push_stack(HL.low, HL.high);
 }
 
 /* AND A,n */
@@ -1869,16 +1938,28 @@ static void op0xE6(void)
 	and(tmp);
 }
 
-/* */
+/* RST 0x20 */
 static void op0xE7(void)
 {
-
+	rst(0x20);
 }
 
-/* */
+/* ADD SP,n */
 static void op0xE8(void)
 {
+	u8 tmp = fetch_8bit_data();
+	int res = tmp + SP;
 
+	reset_flag(ZFLAG);
+	reset_flag(NFLAG);
+
+	if ((tmp ^ SP ^ res) & 0x1000)
+		set_flag(HFLAG);
+
+	if (res > 0xFFFF)
+		set_flag(CFLAG);
+
+	SP = res;
 }
 
 /* */
