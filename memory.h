@@ -1,10 +1,6 @@
 enum {
 	ROM,
-	MBC1,
-	MBC1_RAM,
-	MBC1_RAM_BAT,
-	MBC2,
-	MBC2_BAT
+	MBC1
 } mode;
 
 void read_rom(const unsigned char *buffer, int count);

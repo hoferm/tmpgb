@@ -4,6 +4,7 @@
 #include "gameboy.h"
 
 #include "error.h"
+#include "mbc.h"
 #include "memory.h"
 
 #define N_LOGO_OFFSET 0x104
@@ -14,6 +15,9 @@
 #define MEM_VRAM 0x8000
 #define MEM_RAM 0xA000
 #define MEM_WRAM 0xC000
+#define MEM_SPRITE_TABLE 0xFE00
+#define MEM_IO_REGISTER 0xFF00
+#define MEM_HIGH_RAM 0xFF80
 
 /* Cartridge type address */
 #define CART_TYPE 0x147
@@ -24,6 +28,9 @@ struct {
 	u8 vram[0x2000]; /* 0x8000 - 0x9FFF */
 	u8 ram_bank[16][0x2000]; /* 0xA000 - 0xBFFF */
 	u8 wram[0x2000]; /* 0xC000 - 0xDFFF */
+	u8 sprite_table[0x10];
+	u8 io_reg[0x80];
+	u8 hram[0x70];
 
 	u8 interrupt_enable; /* 0xFFFF - First 5 bits used */
 
@@ -42,8 +49,7 @@ static int cmp_nintendo_logo(void)
 	int i;
 	int ret = 0;
 
-	u8 nintendo_logo[48] =
-	{
+	u8 nintendo_logo[48] = {
 		0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B,
 		0x03, 0x73, 0x00, 0x83, 0x00, 0x0C, 0x00, 0x0D,
 		0x00, 0x08, 0x11, 0x1F, 0x88, 0x89, 0x00, 0x0E,
@@ -86,6 +92,7 @@ void read_rom(const u8 *buffer, int count)
 		memcpy(memory.rom_bank[count], buffer, 0x4000);
 	} else {
 		memcpy(memory.rom, buffer, 0x4000);
+		printf("0x38: %.2X, 0x39: %.2X\n", memory.rom[0x38], memory.rom[0x39]);
 	}
 }
 
@@ -113,7 +120,7 @@ void write_memory(u16 address, u8 value)
 	switch (address >> 12) {
 	case 0x0:
 	case 0x1:
-		memory.ram_enable = enable_ram();
+		memory.ram_enable = enable_ram(value);
 	case 0x2:
 	case 0x3:
 		if (address >= 0x2000) {
@@ -121,7 +128,6 @@ void write_memory(u16 address, u8 value)
 			memory.selected_rom = bank;
 			memory.curr_rom = memory.rom_bank[bank];
 		}
-		memory.rom[address] = value;
 		break;
 	case 0x4:
 	case 0x5:
@@ -139,7 +145,6 @@ void write_memory(u16 address, u8 value)
 		}
 		offset = address % MEM_ROM;
 
-		memory.curr_rom[offset] = value;
 		break;
 	case 0x8:
 	case 0x9:
@@ -165,27 +170,30 @@ void write_memory(u16 address, u8 value)
 			offset = (address % MEM_WRAM) - 0x2000;
 			memory.wram[offset] = value;
 		} else if (address <= 0xFE9F) {
-
+			offset = (address % MEM_SPRITE_TABLE);
+			memory.sprite_table[offset] = value;
 		} else if (address <= 0xFEFF) {
 
 		} else if (address <= 0xFF7F) {
-
+			offset = (address % MEM_IO_REGISTER);
+			memory.io_reg[offset] = value;
 		} else if (address <= 0xFFFE) {
-
+			offset = (address % MEM_HIGH_RAM);
+			memory.hram[offset] = value;
 		} else {
 			memory.interrupt_enable = value & 0x01FF;
 		}
 		break;
 	default:
 		/* Should never be reached */
-		fprintf(stderr, "Invalid address");
+		fprintf(stderr, "Invalid address: %d", address);
 	}
 }
 
 u8 read_memory(u16 address)
 {
 	u16 offset;
-	u8 ret;
+	u8 ret = 0;
 
 	switch (address >> 12) {
 	case 0x0:
@@ -288,13 +296,13 @@ int init_memory(void)
 	write_memory(0xFF49, 0xFF);
 	write_memory(0xFF4A, 0x00);
 	write_memory(0xFF4B, 0x00);
-	write_memory(0xFFFF, 0x00);
 
 	mode = memory.rom[CART_TYPE];
 
 	memory.selected_rom = 0;
 	memory.curr_rom = memory.rom_bank[0];
 	memory.curr_ram = memory.ram_bank[0];
+	memory.interrupt_enable = 0;
 
 out:
 	return ret;

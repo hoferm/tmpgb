@@ -1,7 +1,9 @@
 #include <stdint.h>
 
 #include "gameboy.h"
+
 #include "memory.h"
+#include "opnames.h"
 
 #define ZFLAG 0x80
 #define NFLAG 0x40
@@ -11,18 +13,25 @@
 static void init_optable(void);
 static void init_cb_optable(void);
 
-struct reg {
+struct cpu_reg {
 	u8 high;
 	u8 low;
 } AF, BC, DE, HL;
 
-u16 PC;
-u16 SP;
+static u16 PC;
+static u16 SP;
+
+static unsigned long opcount = 0;
 
 static int clock_count = 0;
 
 void (*optable[512])(void);
 void (*cb_optable[512])(void);
+
+void tick(void)
+{
+	clock_count += 4;
+}
 
 u8 fetch_8bit_data(void)
 {
@@ -30,6 +39,8 @@ u8 fetch_8bit_data(void)
 
 	data = read_memory(PC);
 	PC++;
+
+	log_msg("Byte value: %.2X\n", data);
 
 	return data;
 }
@@ -41,7 +52,17 @@ u16 fetch_16bit_data(void)
 	data = read_memory(PC) + (read_memory(PC + 1) << 8);
 	PC = PC + 2;
 
+	log_msg("2 Byte value: %.4X\n", data);
+
 	return data;
+}
+
+void execute_opcode(u8 opcode)
+{
+	if (opcode > 0)
+		log_msg("%d: OPCODE: %.2X: PC: %.4X, SP: %.4X\n", opcount, opcode, PC, SP);
+	optable[opcode]();
+	opcount++;
 }
 
 void fetch_opcode(void)
@@ -52,11 +73,6 @@ void fetch_opcode(void)
 	PC++;
 
 	execute_opcode(opcode);
-}
-
-void execute_opcode(u8 opcode)
-{
-	optable[opcode]();
 }
 
 static void set_flag(u8 flag)
@@ -90,6 +106,7 @@ u16 pop_stack(void)
 
 	SP += 2;
 
+	log_msg("Stack: %.4X\n", value);
 	return value;
 }
 
@@ -234,6 +251,7 @@ void init_cpu(void)
 	PC = 0x100;
 
 	init_optable();
+	init_cb_optable();
 }
 
 /* NOP */
@@ -829,7 +847,7 @@ static void op0x3E(void)
 /* CCF */
 static void op0x3F(void)
 {
-	if (get_flag(CFLAG)
+	if (get_flag(CFLAG))
 		reset_flag(CFLAG);
 	else
 		set_flag(CFLAG);
@@ -1962,31 +1980,32 @@ static void op0xE8(void)
 	SP = res;
 }
 
-/* */
+/* JP (HL) */
 static void op0xE9(void)
 {
-
+	PC = (HL.high << 8) + HL.low;
 }
 
-/* */
+/* (nn),A */
 static void op0xEA(void)
 {
-
+	u16 address = fetch_16bit_data();
+	write_memory(address, AF.high);
 }
 
-/* */
+/* N/A */
 static void op0xEB(void)
 {
 
 }
 
-/* */
+/* N/A */
 static void op0xEC(void)
 {
 
 }
 
-/* */
+/* N/A */
 static void op0xED(void)
 {
 
@@ -1999,46 +2018,53 @@ static void op0xEE(void)
 	xor(tmp);
 }
 
-/* */
+/* RST 0x28 */
 static void op0xEF(void)
 {
-
+	rst(0x28);
 }
 
-/* */
+/* LDH A,(n) */
 static void op0xF0(void)
 {
+	u8 tmp = fetch_8bit_data();
 
+	AF.high = read_memory(0xFF00 + tmp);
 }
 
-/* */
+/* POP AF */
 static void op0xF1(void)
 {
+	u16 tmp = pop_stack();
 
+	AF.high = tmp >> 8;
+	AF.low = tmp & 0xFF;
 }
 
-/* */
+/* LD A,(C) */
 static void op0xF2(void)
 {
+	u8 tmp = read_memory(0xFF00 + BC.low);
 
+	AF.high = tmp;
 }
 
-/* */
+/* DI */
 static void op0xF3(void)
 {
-
+	/* Disable Interrupt */
 }
 
-/* */
+/* N/A */
 static void op0xF4(void)
 {
 
 }
 
-/* */
+/* PUSH AF */
 static void op0xF5(void)
 {
-
+	push_stack(AF.low, AF.high);
 }
 
 /* OR A,n */
@@ -2048,10 +2074,10 @@ static void op0xF6(void)
 	or(tmp);
 }
 
-/* */
+/* RST 0x30 */
 static void op0xF7(void)
 {
-
+	rst(0x30);
 }
 
 /* */
@@ -2072,19 +2098,19 @@ static void op0xFA(void)
 
 }
 
-/* */
+/* EI */
 static void op0xFB(void)
 {
-
+	/* Enable Interrupt */
 }
 
-/* */
+/* N/A */
 static void op0xFC(void)
 {
 
 }
 
-/* */
+/* N/A */
 static void op0xFD(void)
 {
 
@@ -2097,10 +2123,10 @@ static void op0xFE(void)
 	cmp(tmp);
 }
 
-/* */
+/* RST 0x38 */
 static void op0xFF(void)
 {
-
+	rst(0x38);
 }
 
 static void init_optable(void)
@@ -2361,4 +2387,8 @@ static void init_optable(void)
 	optable[0xFD] = op0xFD;
 	optable[0xFE] = op0xFE;
 	optable[0xFF] = op0xFF;
+}
+
+static void init_cb_optable(void)
+{
 }
