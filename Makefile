@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -std=c99 -pedantic -DDEBUG
+CFLAGS = -Wall -Wextra -Werror -std=c99 -pedantic -DDEBUG
 LDFLAGS =
 DEPDIR = .d
 BUILDDIR = obj
