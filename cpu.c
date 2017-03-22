@@ -110,6 +110,32 @@ u16 pop_stack(void)
 	return value;
 }
 
+static u8 inc_8bit(u8 reg)
+{
+	if ((reg & 0x0F) == 15)
+		set_flag(HFLAG);
+
+	reg++;
+	if (reg == 0)
+		set_flag(ZFLAG);
+
+	reset_flag(NFLAG);
+	return reg;
+}
+
+static u8 dec_8bit(u8 reg)
+{
+	if ((reg & 0x0F) == 0)
+		set_flag(HFLAG);
+
+	reg--;
+	if (reg == 0)
+		set_flag(ZFLAG);
+
+	set_flag(NFLAG);
+	return reg;
+}
+
 static void add(u8 val, int with_carry)
 {
 	u16 res;
@@ -288,27 +314,13 @@ static void op0x03(void)
 /* INC B */
 static void op0x04(void)
 {
-	if ((BC.high & 0x0F) == 15)
-		set_flag(HFLAG);
-
-	BC.high++;
-	if (BC.high == 0)
-		set_flag(ZFLAG);
-
-	reset_flag(NFLAG);
+	BC.high = inc_8bit(BC.high);
 }
 
 /* DEC B */
 static void op0x05(void)
 {
-	if ((BC.high & 0x0F) != 0)
-		set_flag(HFLAG);
-
-	BC.high--;
-	if (BC.high == 0)
-		set_flag(ZFLAG);
-
-	set_flag(NFLAG);
+	BC.high = dec_8bit(BC.high);
 }
 
 /* LD B,n */
@@ -350,10 +362,13 @@ static void op0x09(void)
 	add_HL(tmp + BC.low);
 }
 
-/* LD A,BC */
+/* LD A,(BC) */
 static void op0x0A(void)
 {
-	AF.high = BC.low;
+	u16 tmp = BC.high;
+	tmp <<= 8;
+	tmp += BC.low;
+	AF.high = read_memory(tmp);
 }
 
 /* DEC BC */
@@ -369,27 +384,13 @@ static void op0x0B(void)
 /* INC C */
 static void op0x0C(void)
 {
-	if ((BC.low & 0x0F) == 15)
-		set_flag(HFLAG);
-
-	BC.low++;
-	if (BC.low == 0)
-		set_flag(ZFLAG);
-
-	reset_flag(NFLAG);
+	BC.low = inc_8bit(BC.low);
 }
 
 /* DEC C */
 static void op0x0D(void)
 {
-	if ((BC.low & 0x0F) != 0)
-		set_flag(HFLAG);
-
-	BC.low--;
-	if (BC.low == 0)
-		set_flag(ZFLAG);
-
-	set_flag(NFLAG);
+	BC.low = dec_8bit(BC.low);
 }
 
 /* LD C,n */
@@ -447,27 +448,13 @@ static void op0x13(void)
 /* INC D */
 static void op0x14(void)
 {
-	if ((DE.high & 0x0F) == 15)
-		set_flag(HFLAG);
-
-	DE.high++;
-	if (DE.high == 0)
-		set_flag(ZFLAG);
-
-	reset_flag(NFLAG);
+	DE.high = inc_8bit(DE.high);
 }
 
 /* DEC D */
 static void op0x15(void)
 {
-	if ((DE.high & 0x0F) != 0)
-		set_flag(HFLAG);
-
-	DE.high--;
-	if (DE.high == 0)
-		set_flag(ZFLAG);
-
-	set_flag(NFLAG);
+	DE.high = dec_8bit(DE.high);
 }
 
 /* LD D,n */
@@ -508,10 +495,13 @@ static void op0x19(void)
 	add_HL(tmp + DE.low);
 }
 
-/* LD A,DE */
+/* LD A,(DE) */
 static void op0x1A(void)
 {
-	AF.high = DE.low;
+	u16 tmp = DE.high;
+	tmp <<= 8;
+	tmp += DE.low;
+	AF.high = read_memory(tmp);
 }
 
 /* DEC DE */
@@ -526,27 +516,13 @@ static void op0x1B(void)
 /* INC E */
 static void op0x1C(void)
 {
-	if ((DE.low & 0x0F) == 15)
-		set_flag(HFLAG);
-
-	DE.low++;
-	if (DE.low == 0)
-		set_flag(ZFLAG);
-
-	reset_flag(NFLAG);
+	DE.low = inc_8bit(DE.low);
 }
 
 /* DEC E */
 static void op0x1D(void)
 {
-	if ((DE.low & 0x0F) != 0)
-		set_flag(HFLAG);
-
-	DE.low--;
-	if (DE.low == 0)
-		set_flag(ZFLAG);
-
-	set_flag(NFLAG);
+	DE.low = dec_8bit(DE.low);
 }
 
 /* LD E,n */
@@ -611,27 +587,13 @@ static void op0x23(void)
 /* INC H */
 static void op0x24(void)
 {
-	if ((HL.high & 0x0F) == 15)
-		set_flag(HFLAG);
-
-	HL.high++;
-	if (HL.high == 0)
-		set_flag(ZFLAG);
-
-	reset_flag(NFLAG);
+	HL.high = inc_8bit(HL.high);
 }
 
 /* DEC H */
 static void op0x25(void)
 {
-	if ((HL.high & 0x0F) != 0)
-		set_flag(HFLAG);
-
-	HL.high--;
-	if (HL.high == 0)
-		set_flag(ZFLAG);
-
-	set_flag(NFLAG);
+	HL.high = dec_8bit(HL.high);
 }
 
 /* LD H,n */
@@ -668,6 +630,7 @@ static void op0x2A(void)
 	tmp <<= 8;
 	tmp += HL.low;
 	AF.high = read_memory(tmp);
+	op0x23();
 }
 
 /* DEC HL */
@@ -682,27 +645,13 @@ static void op0x2B(void)
 /* INC L */
 static void op0x2C(void)
 {
-	if ((HL.low & 0x0F) == 15)
-		set_flag(HFLAG);
-
-	HL.low++;
-	if (HL.low == 0)
-		set_flag(ZFLAG);
-
-	reset_flag(NFLAG);
+	HL.low = inc_8bit(HL.low);
 }
 
 /* DEC L */
 static void op0x2D(void)
 {
-	if ((HL.low & 0x0F) != 0)
-		set_flag(HFLAG);
-
-	HL.low--;
-	if (HL.low == 0)
-		set_flag(ZFLAG);
-
-	set_flag(NFLAG);
+	HL.low = dec_8bit(HL.low);
 }
 
 /* LD L,n */
@@ -758,14 +707,7 @@ static void op0x34(void)
 	u16 tmp = HL.high;
 	tmp <<= 8;
 	tmp += HL.low;
-	if ((read_memory(tmp) & 0x0F) == 0x0F)
-		set_flag(HFLAG);
-
-	write_memory(tmp, read_memory(tmp) + 1);
-	if (read_memory(tmp) == 0)
-		set_flag(ZFLAG);
-
-	reset_flag(NFLAG);
+	write_memory(tmp, inc_8bit(read_memory(tmp)));
 }
 
 /* DEC (HL) */
@@ -774,14 +716,9 @@ static void op0x35(void)
 	u16 tmp = HL.high;
 	tmp <<= 8;
 	tmp += HL.low;
-	if ((read_memory(tmp) & 0x0F) == 0)
-		set_flag(HFLAG);
 
-	write_memory(tmp, read_memory(tmp) - 1);
-	if (read_memory(tmp) == 0)
-		set_flag(ZFLAG);
-
-	set_flag(NFLAG);
+	write_memory(tmp, dec_8bit(read_memory(tmp)));
+	
 }
 
 /* LD (HL),n */
@@ -814,10 +751,14 @@ static void op0x39(void)
 	add_HL(SP);
 }
 
-/* */
+/* LDD A,(HL) */
 static void op0x3A(void)
 {
-
+	u16 tmp = HL.high;
+	tmp <<= 8;
+	tmp += HL.low;
+	AF.high = read_memory(tmp);
+	op0x2B();
 }
 
 /* DEC SP */
@@ -826,22 +767,22 @@ static void op0x3B(void)
 	SP--;
 }
 
-/* */
+/* INC A */
 static void op0x3C(void)
 {
-
+	AF.high = inc_8bit(AF.high);
 }
 
-/* */
+/* DEC A */
 static void op0x3D(void)
 {
-
+	AF.high = dec_8bit(AF.high);
 }
 
-/* */
+/* LD A,n */
 static void op0x3E(void)
 {
-
+	AF.high = fetch_8bit_data();
 }
 
 /* CCF */
@@ -853,388 +794,430 @@ static void op0x3F(void)
 		set_flag(CFLAG);
 }
 
-/* */
+/* LD B,B */
 static void op0x40(void)
 {
-
+	BC.high = BC.high;
 }
 
-/* */
+/* LD B,C */
 static void op0x41(void)
 {
-
+	BC.high = BC.low;
 }
 
-/* */
+/* LD B,D */
 static void op0x42(void)
 {
-
+	BC.high = DE.high;
 }
 
-/* */
+/* LD B,E */
 static void op0x43(void)
 {
-
+	BC.high = DE.low;
 }
 
-/* */
+/* LD B,H */
 static void op0x44(void)
 {
-
+	BC.high = HL.high;
 }
 
-/* */
+/* LD B,L */
 static void op0x45(void)
 {
-
+	BC.high = HL.low;
 }
 
-/* */
+/* LD B,(HL)*/
 static void op0x46(void)
 {
-
+	u16 tmp = HL.high;
+	tmp <<= 8;
+	tmp += HL.low;
+	BC.high = read_memory(tmp);
 }
 
-/* */
+/* LD B,A */
 static void op0x47(void)
 {
-
+	BC.high = AF.high;
 }
 
-/* */
+/* LD C,B */
 static void op0x48(void)
 {
-
+	BC.low = BC.high;
 }
 
-/* */
+/* LD C,C */
 static void op0x49(void)
 {
-
+	BC.low = BC.low;
 }
 
-/* */
+/* LD C,D */
 static void op0x4A(void)
 {
-
+	BC.low = DE.high;
 }
 
-/* */
+/* LD C,E */
 static void op0x4B(void)
 {
-
+	BC.low = DE.low;
 }
 
-/* */
+/* LD C,H */
 static void op0x4C(void)
 {
-
+	BC.low = HL.high;
 }
 
-/* */
+/* LD C,L */
 static void op0x4D(void)
 {
-
+	BC.low = HL.low;
 }
 
-/* */
+/* LD C,(HL) */
 static void op0x4E(void)
 {
-
+	u16 tmp = HL.high;
+	tmp <<= 8;
+	tmp += HL.low;
+	BC.low = read_memory(tmp);
 }
 
-/* */
+/* LD C,A */
 static void op0x4F(void)
 {
-
+	BC.low = AF.high;
 }
 
-/* */
+/* LD D,B */
 static void op0x50(void)
 {
-
+	DE.high = BC.high;
 }
 
-/* */
+/* LD D,C */
 static void op0x51(void)
 {
-
+	DE.high = BC.low;
 }
 
-/* */
+/* LD D,D */
 static void op0x52(void)
 {
-
+	DE.high = DE.high;
 }
 
-/* */
+/* LD D,E */
 static void op0x53(void)
 {
-
+	DE.high = DE.low;
 }
 
-/* */
+/* LD D,H */
 static void op0x54(void)
 {
-
+	DE.high = HL.high;
 }
 
-/* */
+/* LD D,L */
 static void op0x55(void)
 {
-
+	DE.high = HL.low;
 }
 
-/* */
+/* LD D,(HL) */
 static void op0x56(void)
 {
-
+	u16 tmp = HL.high;
+	tmp <<= 8;
+	tmp += HL.low;
+	DE.high = read_memory(tmp);
 }
 
-/* */
+/* LD D,A */
 static void op0x57(void)
 {
-
+	DE.high = AF.high;
 }
 
-/* */
+/* LD E,B */
 static void op0x58(void)
 {
-
+	DE.low = BC.high;
 }
 
-/* */
+/* LD E,C */
 static void op0x59(void)
 {
-
+	DE.low = BC.low;
 }
 
-/* */
+/* LD E,D */
 static void op0x5A(void)
 {
-
+	DE.low = DE.high;
 }
 
-/* */
+/* LD E,E */
 static void op0x5B(void)
 {
-
+	DE.low = DE.low;
 }
 
-/* */
+/* LD E,H */
 static void op0x5C(void)
 {
-
+	DE.low = HL.high;
 }
 
-/* */
+/* LD E,L */
 static void op0x5D(void)
 {
-
+	DE.low = HL.low;
 }
 
-/* */
+/* LD E,(HL) */
 static void op0x5E(void)
 {
-
+	u16 tmp = HL.high;
+	tmp <<= 8;
+	tmp += HL.low;
+	DE.low = read_memory(tmp);
 }
 
-/* */
+/* LD E,A */
 static void op0x5F(void)
 {
-
+	DE.low = AF.high;
 }
 
-/* */
+/* LD H,B */
 static void op0x60(void)
 {
-
+	HL.high = BC.high;
 }
 
-/* */
+/* LD H,C */
 static void op0x61(void)
 {
-
+	HL.high = BC.low;
 }
 
-/* */
+/* LD H,D */
 static void op0x62(void)
 {
-
+	HL.high = DE.high;
 }
 
-/* */
+/* LD H,E */
 static void op0x63(void)
 {
-
+	HL.high = DE.low;
 }
 
-/* */
+/* LD H,H */
 static void op0x64(void)
 {
-
+	HL.high = HL.high;
 }
 
-/* */
+/* LD H,L */
 static void op0x65(void)
 {
-
+	HL.high = HL.low;
 }
 
-/* */
+/* LD H,(HL) */
 static void op0x66(void)
 {
-
+	u16 tmp = HL.high;
+	tmp <<= 8;
+	tmp += HL.low;
+	HL.high = read_memory(tmp);
 }
 
-/* */
+/* LD H,A */
 static void op0x67(void)
 {
-
+	HL.high = AF.high;
 }
 
-/* */
+/* LD L,B */
 static void op0x68(void)
 {
-
+	HL.low = BC.high;
 }
 
-/* */
+/* LD L,C */
 static void op0x69(void)
 {
-
+	HL.low = BC.low;
 }
 
-/* */
+/* LD L,D */
 static void op0x6A(void)
 {
-
+	HL.low = DE.high;
 }
 
-/* */
+/* LD L,E */
 static void op0x6B(void)
 {
-
+	HL.low = DE.low;
 }
 
-/* */
+/* LD L,H */
 static void op0x6C(void)
 {
-
+	HL.low = HL.high;
 }
 
-/* */
+/* LD L,L */
 static void op0x6D(void)
 {
-
+	HL.low = HL.low;
 }
 
-/* */
+/* LD L,(HL) */
 static void op0x6E(void)
 {
-
+	u16 tmp = HL.high;
+	tmp <<= 8;
+	tmp += HL.low;
+	HL.low = read_memory(tmp);
 }
 
-/* */
+/* LD L,A */
 static void op0x6F(void)
 {
-
+	HL.low = AF.high;
 }
 
-/* */
+/* LD (HL),B */
 static void op0x70(void)
 {
-
+	u16 tmp = HL.high;
+	tmp <<= 8;
+	tmp += HL.low;
+	write_memory(tmp, BC.high);
 }
 
-/* */
+/* LD (HL),C */
 static void op0x71(void)
 {
-
+	u16 tmp = HL.high;
+	tmp <<= 8;
+	tmp += HL.low;
+	write_memory(tmp, BC.low);
 }
 
-/* */
+/* LD (HL),D */
 static void op0x72(void)
 {
-
+	u16 tmp = HL.high;
+	tmp <<= 8;
+	tmp += HL.low;
+	write_memory(tmp, DE.high);
 }
 
-/* */
+/* LD (HL),E */
 static void op0x73(void)
 {
-
+	u16 tmp = HL.high;
+	tmp <<= 8;
+	tmp += HL.low;
+	write_memory(tmp, DE.low);
 }
 
-/* */
+/* LD (HL),H */
 static void op0x74(void)
 {
-
+	u16 tmp = HL.high;
+	tmp <<= 8;
+	tmp += HL.low;
+	write_memory(tmp, HL.high);
 }
 
-/* */
+/* LD (HL),L */
 static void op0x75(void)
 {
-
+	u16 tmp = HL.high;
+	tmp <<= 8;
+	tmp += HL.low;
+	write_memory(tmp, HL.low);
 }
 
-/* */
+/* HALT */
 static void op0x76(void)
 {
 
 }
 
-/* */
+/* LD (HL),A */
 static void op0x77(void)
 {
-
+	u16 tmp = HL.high;
+	tmp <<= 8;
+	tmp += HL.low;
+	write_memory(tmp, AF.high);
 }
 
-/* */
+/* LD A,B */
 static void op0x78(void)
 {
-
+	AF.high = BC.high;
 }
 
-/* */
+/* LD A,C */
 static void op0x79(void)
 {
-
+	AF.high = BC.low;
 }
 
-/* */
+/* LD A,D */
 static void op0x7A(void)
 {
-
+	AF.high = DE.high;
 }
 
-/* */
+/* LD A,E */
 static void op0x7B(void)
 {
-
+	AF.high = DE.low;
 }
 
-/* */
+/* LD A,H */
 static void op0x7C(void)
 {
-
+	AF.high = HL.high;
 }
 
-/* */
+/* LD A,L */
 static void op0x7D(void)
 {
-
+	AF.high = HL.low;
 }
 
-/* */
+/* LD A,(HL) */
 static void op0x7E(void)
 {
-
+	u16 tmp = HL.high;
+	tmp <<= 8;
+	tmp += HL.low;
+	AF.high = read_memory(tmp);
 }
 
-/* */
+/* LD A,A */
 static void op0x7F(void)
 {
-
+	AF.high = AF.high;
 }
 
 /* ADD A,B */
@@ -1277,7 +1260,7 @@ static void op0x85(void)
 static void op0x86(void)
 {
 	u16 tmp = (HL.high << 8) + HL.low;
-	add(tmp, 0);
+	add(read_memory(tmp), 0);
 }
 
 /* ADD A,A */
@@ -1286,148 +1269,157 @@ static void op0x87(void)
 	add(AF.high, 0);
 }
 
-/* */
+/* ADC A,B */
 static void op0x88(void)
 {
-
+	add(BC.high, 1);
 }
 
-/* */
+/* ADC A,C */
 static void op0x89(void)
 {
-
+	add(BC.low, 1);
 }
 
-/* */
+/* ADC A,D */
 static void op0x8A(void)
 {
-
+	add(DE.high, 1);
 }
 
-/* */
+/* ADC A,E */
 static void op0x8B(void)
 {
-
+	add(DE.low, 1);
 }
 
-/* */
+/* ADC A,H */
 static void op0x8C(void)
 {
-
+	add(HL.high, 1);
 }
 
-/* */
+/* ADC A,L */
 static void op0x8D(void)
 {
-
+	add(HL.low, 1);
 }
 
-/* */
+/* ADC A,(HL) */
 static void op0x8E(void)
 {
-
+	u16 tmp = HL.high;
+	tmp <<= 8;
+	tmp += HL.low;
+	add(read_memory(tmp), 1);
 }
 
-/* */
+/* ADC A,A */
 static void op0x8F(void)
 {
-
+	add(AF.high, 1);
 }
 
-/* */
+/* SUB A,B */
 static void op0x90(void)
 {
-
+	sub(BC.high, 0);
 }
 
-/* */
+/* SUB A,C */
 static void op0x91(void)
 {
-
+	sub(BC.low, 0);
 }
 
-/* */
+/* SUB A,D */
 static void op0x92(void)
 {
-
+	sub(DE.high, 0);
 }
 
-/* */
+/* SUB A,E */
 static void op0x93(void)
 {
-
+	sub(DE.low, 0);
 }
 
-/* */
+/* SUB A,H */
 static void op0x94(void)
 {
-
+	sub(HL.high, 0);
 }
 
-/* */
+/* SUB A,L */
 static void op0x95(void)
 {
-
+	sub(HL.low, 0);
 }
 
-/* */
+/* SUB A,(HL) */
 static void op0x96(void)
 {
-
+	u16 tmp = HL.high;
+	tmp <<= 8;
+	tmp += HL.low;
+	sub(read_memory(tmp), 0);
 }
 
-/* */
+/* SUB A,A */
 static void op0x97(void)
 {
-
+	sub(AF.high, 0);
 }
 
-/* */
+/* SBC A,B */
 static void op0x98(void)
 {
-
+	sub(BC.high, 1);
 }
 
-/* */
+/* SBC A,C */
 static void op0x99(void)
 {
-
+	sub(BC.low, 1);
 }
 
-/* */
+/* SBC A,D */
 static void op0x9A(void)
 {
-
+	sub(DE.high, 1);
 }
 
-/* */
+/* SBC A,E */
 static void op0x9B(void)
 {
-
+	sub(DE.low, 1);
 }
 
-/* */
+/* SBC A,H */
 static void op0x9C(void)
 {
-
+	sub(HL.high, 1);
 }
 
-/* */
+/* SBC A,L */
 static void op0x9D(void)
 {
-
+	sub(HL.low, 1);
 }
 
-/* */
+/* SBC A,(HL) */
 static void op0x9E(void)
 {
-
+	u16 tmp = HL.high;
+	tmp <<= 8;
+	tmp += HL.low;
+	sub(read_memory(tmp), 1);
 }
 
-/* */
+/* SBC A,A */
 static void op0x9F(void)
 {
-
+	sub(AF.high, 1);
 }
 
 /* AND A,B */
@@ -1525,7 +1517,7 @@ static void op0xAE(void)
 /* XOR A,A */
 static void op0xAF(void)
 {
-	return;
+	AF.high = 0;
 }
 
 /* OR A,B  */
@@ -2080,16 +2072,37 @@ static void op0xF7(void)
 	rst(0x30);
 }
 
-/* */
+/* LD HL,SP+n */
 static void op0xF8(void)
 {
-
+	char value = fetch_8bit_data();
+	int result;
+	result = SP + value;
+	if (result > 0xFFFF)
+		set_flag(CFLAG);
+	else
+		reset_flag(CFLAG);
+	
+	HL.low = result & 0x00FF;
+	HL.high = result >> 8;
+	result = 0;
+	result = (SP & 0x0FFF) + (value & 0x0FFF);
+	if (result > 0x0FFF)
+		set_flag(HFLAG);
+	else
+		reset_flag(HFLAG);
+	
+	reset_flag(ZFLAG);
+	reset_flag(NFLAG);
 }
 
-/* */
+/* LD SP,HL */
 static void op0xF9(void)
 {
-
+	u16 tmp = HL.high;
+	tmp <<= 8;
+	tmp += HL.low;
+	SP = tmp;
 }
 
 /* */
