@@ -35,6 +35,7 @@ static void load_rom(const char *rom)
 			fprintf(stderr, "Read: %ld\n", nread);
 			if (ferror(fp)) {
 				fprintf(stderr, "Error reading %s", rom);
+				fclose(fp);
 				exit(EXIT_FAILURE);
 			}
 			break;

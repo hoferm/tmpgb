@@ -6,6 +6,7 @@
 #include "error.h"
 #include "mbc.h"
 #include "memory.h"
+#include "video.h"
 
 #define N_LOGO_OFFSET 0x104
 
@@ -22,7 +23,7 @@
 /* Cartridge type address */
 #define CART_TYPE 0x147
 
-struct {
+static struct {
 	u8 rom[0x4000]; /* 0x0000 - 0x3FFF */
 	u8 rom_bank[512][0x4000]; /* 0x4000 - 0x7FFF */
 	u8 vram[0x2000]; /* 0x8000 - 0x9FFF */
@@ -37,8 +38,8 @@ struct {
 	int mbc_mode;
 
 	u8 selected_rom;
-	u8 *curr_rom; /* Pointer to current selected rom bank. */
-	u8 *curr_ram; /* Pointer to current selected ram bank. */
+	u8 *curr_rom; /* Pointer to current selected ROM bank. */
+	u8 *curr_ram; /* Pointer to current selected RAM bank. */
 
 	u8 ram_enable;
 
@@ -175,6 +176,8 @@ void write_memory(u16 address, u8 value)
 		} else if (address <= 0xFEFF) {
 
 		} else if (address <= 0xFF7F) {
+			if (address == 0xFF40) {
+			}
 			offset = (address % MEM_IO_REGISTER);
 			memory.io_reg[offset] = value;
 		} else if (address <= 0xFFFE) {
@@ -250,6 +253,11 @@ u8 read_memory(u16 address)
 		fprintf(stderr, "Invalid address");
 	}
 	return ret;
+}
+
+u8 *get_vram(void)
+{
+	return memory.vram;
 }
 
 int init_memory(void)
