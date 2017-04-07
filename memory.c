@@ -6,7 +6,6 @@
 #include "error.h"
 #include "mbc.h"
 #include "memory.h"
-#include "video.h"
 
 #define N_LOGO_OFFSET 0x104
 
@@ -174,7 +173,6 @@ void write_memory(u16 address, u8 value)
 			offset = (address % MEM_SPRITE_TABLE);
 			memory.sprite_table[offset] = value;
 		} else if (address <= 0xFEFF) {
-
 		} else if (address <= 0xFF7F) {
 			if (address == 0xFF40) {
 			}
@@ -237,13 +235,15 @@ u8 read_memory(u16 address)
 			offset = address % 0xC000;
 			ret = memory.wram[offset];
 		} else if (address <= 0xFE9F) {
-
+			offset = address - MEM_SPRITE_TABLE;
+			ret = memory.sprite_table[offset];
 		} else if (address <= 0xFEFF) {
-
 		} else if (address <= 0xFF7F) {
-
+			offset = address - MEM_IO_REGISTER;
+			ret = memory.io_reg[offset];
 		} else if (address <= 0xFFFE) {
-
+			offset = address - MEM_HIGH_RAM;
+			ret = memory.hram[offset];
 		} else {
 			ret = memory.interrupt_enable & 0x01FF;
 		}
