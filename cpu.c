@@ -25,8 +25,8 @@ static unsigned long opcount = 0;
 
 static int clock_count = 0;
 
-void (*optable[512])(void);
-void (*cb_optable[512])(void);
+void (*optable[256])(void);
+void (*cb_optable[256])(void);
 
 void tick(void)
 {

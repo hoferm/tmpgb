@@ -1,4 +1,4 @@
-const char *op_names[512] = {
+const char *op_names[256] = {
 	"NOP",
 	"LD BC,nn",
 	"LD BC,A",
