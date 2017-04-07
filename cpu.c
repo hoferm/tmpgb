@@ -1978,7 +1978,7 @@ static void op0xE9(void)
 	PC = (HL.high << 8) + HL.low;
 }
 
-/* (nn),A */
+/* LD (nn),A */
 static void op0xEA(void)
 {
 	u16 address = fetch_16bit_data();
