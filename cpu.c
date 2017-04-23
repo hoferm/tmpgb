@@ -1,7 +1,6 @@
-#include <stdint.h>
-
 #include "gameboy.h"
 
+#include "interrupt.h"
 #include "memory.h"
 #include "opnames.h"
 
@@ -13,7 +12,10 @@
 static void init_optable(void);
 static void init_cb_optable(void);
 
-struct cpu_reg {
+void (*optable[256])(void);
+void (*cb_optable[256])(void);
+
+static struct cpu_reg {
 	u8 high;
 	u8 low;
 } AF, BC, DE, HL;
@@ -21,16 +23,40 @@ struct cpu_reg {
 static u16 PC;
 static u16 SP;
 
-static unsigned long opcount = 0;
+static u64 opcount = 0;
 
 static int clock_count = 0;
 
-void (*optable[256])(void);
-void (*cb_optable[256])(void);
+static int disable_interrupt = 0;
 
 void tick(void)
 {
 	clock_count += 4;
+}
+
+int cpu_cycle(void)
+{
+	return clock_count;
+}
+
+void push_stack(u8 low, u8 high)
+{
+	SP--;
+	write_memory(SP, high);
+	SP--;
+	write_memory(SP, low);
+}
+
+u16 pop_stack(void)
+{
+	u16 value;
+	value = read_memory(SP);
+	value += (read_memory(SP + 1) << 8);
+
+	SP += 2;
+
+	log_msg("Stack: %.4X\n", value);
+	return value;
 }
 
 u8 fetch_8bit_data(void)
@@ -59,9 +85,18 @@ u16 fetch_16bit_data(void)
 
 void execute_opcode(u8 opcode)
 {
+	int interrupt = execute_interrupt();
+	if (interrupt) {
+		push_stack(PC, PC >> 8);
+		PC = interrupt;
+	}
 	if (opcode > 0)
-		log_msg("%d: OPCODE: %.2X: PC: %.4X, SP: %.4X\n", opcount, opcode, PC, SP);
+		log_msg("%d: %s (%.2X): PC: %.4X, SP: %.4X\n", opcount, op_names[opcode], opcode, PC, SP);
+
 	optable[opcode]();
+
+	if (disable_interrupt)
+		set_ime(0);
 	opcount++;
 }
 
@@ -88,26 +123,6 @@ static void reset_flag(u8 flag)
 static u8 get_flag(u8 flag)
 {
 	return (AF.low & flag) ? 1 : 0;
-}
-
-void push_stack(u8 low, u8 high)
-{
-	SP--;
-	write_memory(SP, high);
-	SP--;
-	write_memory(SP, low);
-}
-
-u16 pop_stack(void)
-{
-	u16 value;
-	value = read_memory(SP);
-	value += (read_memory(SP + 1) << 8);
-
-	SP += 2;
-
-	log_msg("Stack: %.4X\n", value);
-	return value;
 }
 
 static u8 inc_8bit(u8 reg)
@@ -718,7 +733,7 @@ static void op0x35(void)
 	tmp += HL.low;
 
 	write_memory(tmp, dec_8bit(read_memory(tmp)));
-	
+
 }
 
 /* LD (HL),n */
@@ -1843,7 +1858,8 @@ static void op0xD8(void)
 /* RETI */
 static void op0xD9(void)
 {
-	/* Sets Interrupt Master Enable flag */
+	PC = pop_stack();
+	set_ime(1);
 }
 
 /* JP C,nn */
@@ -2044,7 +2060,7 @@ static void op0xF2(void)
 /* DI */
 static void op0xF3(void)
 {
-	/* Disable Interrupt */
+	disable_interrupt = 1;
 }
 
 /* N/A */
@@ -2082,7 +2098,7 @@ static void op0xF8(void)
 		set_flag(CFLAG);
 	else
 		reset_flag(CFLAG);
-	
+
 	HL.low = result & 0x00FF;
 	HL.high = result >> 8;
 	result = 0;
@@ -2091,7 +2107,7 @@ static void op0xF8(void)
 		set_flag(HFLAG);
 	else
 		reset_flag(HFLAG);
-	
+
 	reset_flag(ZFLAG);
 	reset_flag(NFLAG);
 }
@@ -2105,16 +2121,18 @@ static void op0xF9(void)
 	SP = tmp;
 }
 
-/* */
+/* LD A,(nn) */
 static void op0xFA(void)
 {
+	u16 address = fetch_16bit_data();
 
+	AF.high = read_memory(address);
 }
 
 /* EI */
 static void op0xFB(void)
 {
-	/* Enable Interrupt */
+	set_ime(1);
 }
 
 /* N/A */

@@ -5,12 +5,13 @@
 #include "cpu.h"
 #include "error.h"
 #include "memory.h"
+#include "sdl.h"
 
 #define READ_SIZE 0x4000
 
 static void usage(void)
 {
-	fprintf(stderr, "usage: tmpgb -d <file>");
+	fprintf(stderr, "usage: tmpgb -d <file>\n");
 	exit(EXIT_FAILURE);
 }
 
@@ -24,7 +25,7 @@ static void load_rom(const char *rom)
 	fp = fopen(rom, "rb");
 
 	if (fp == NULL) {
-		fprintf(stderr, "Could not open %s", rom);
+		fprintf(stderr, "Could not open %s\n", rom);
 		exit(EXIT_FAILURE);
 	}
 
@@ -32,13 +33,11 @@ static void load_rom(const char *rom)
 		nread = fread(buffer, 1, READ_SIZE, fp);
 
 		if (nread < READ_SIZE) {
-			fprintf(stderr, "Read: %ld\n", nread);
 			if (ferror(fp)) {
-				fprintf(stderr, "Error reading %s", rom);
+				fprintf(stderr, "Error reading %s\n", rom);
 				fclose(fp);
 				exit(EXIT_FAILURE);
 			}
-			break;
 		}
 		read_rom(buffer, i);
 		i++;
@@ -50,6 +49,7 @@ static void load_rom(const char *rom)
 static void run(void)
 {
 	int ret;
+	int quit = 0;
 
 	if ((ret = init_memory()) != 0) {
 		errnr = ret;
@@ -58,7 +58,13 @@ static void run(void)
 
 	init_cpu();
 
-	for (;;) {
+	if (init_sdl() != 0) {
+		fprintf(stderr, "Failed to create window\n");
+		exit(EXIT_FAILURE);
+	}
+
+	while (!quit) {
+		quit = handle_event();
 		fetch_opcode();
 	}
 }
@@ -90,6 +96,9 @@ int main(int argc, char **argv)
 	char *rom;
 	int res = 0;
 
+	if (argc < 2) 
+		usage();
+
 	if (argc > 2) {
 		argc--;
 		argv++;
@@ -103,6 +112,8 @@ int main(int argc, char **argv)
 	load_rom(rom);
 
 	run();
+
+	close_sdl();
 
 	return 0;
 }

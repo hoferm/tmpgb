@@ -1,43 +1,132 @@
+#include <stdlib.h>
+
 #include "gameboy.h"
 
+#include "error.h"
 #include "memory.h"
+#include "video.h"
 
-/* LCD COONTROL flags */
-#define BIT_7(reg) (reg & 0x80)
-#define BIT_6(reg) (reg & 0x40)
-#define BIT_5(reg) (reg & 0x20)
-#define BIT_4(reg) (reg & 0x10)
-#define BIT_3(reg) (reg & 0x08)
-#define BIT_2(reg) (reg & 0x04)
-#define BIT_1(reg) (reg & 0x02)
-#define BIT_0(reg) (reg & 0x01)
+#define BG_MAP_SIZE 256
+#define BG_MAP_START 0x9800
+#define BG_MAP_END 0x9BFF
 
-#define WIDTH 160
-#define HEIGHT 144
+struct sprite {
+	u8 y;
+	u8 x;
+	u8 tile;
+	u8 flags;
+};
 
-#define BGM_SIZE 256
+struct point {
+	int x;
+	int y;
+	int color;
+};
 
 static u8 *vram;
+static u16 max_vram_range = 0x97FF;
 
-static void get_tile_data(int pattern)
+static u64 palette[4] = { 0xFFFFFF, 0xB2B2B2, 0x666666, 0x0 };
+
+static u8 lcdc_register;
+
+static void tile_data(u8 *tile, u8 tile_nr)
 {
-	*vram = get_vram();
-	u8 lcdc_register = read_memory(0xFF40);
-	u16 max_range = 0x97FF;
+	int i, j;
+	int start = tile_nr * 16;
+	int end = start + 16;
+	u8 color;
+	u8 lsb, msb;
+	int offset = 0;
 
 	if (BIT_4(lcdc_register)) {
-		max_range = 0x8FFF;
+		max_vram_range = 0x8FFF;
+	} else {
+		max_vram_range = 0x97FF;
+		offset = 0x800;
 	}
+
+	for (i = start; i < end; i += 2) {
+		lsb = vram[i];
+		msb = vram[i+1];
+
+		for (j = 7; j >= 0; --j) {
+			color = ((lsb >> (j + 1)) & 0x1) + ((msb >> j) & 0x2);
+
+			if (j == 0)
+				*(tile + offset + ((i / 2) * 8) + 7) = color;
+			else
+				*(tile + offset + ((i / 2) * 8) + (j % 7)) = color;
+		}
+	}
+}
+
+static u8 get_scy(void)
+{
+	return read_memory(0xFF42);
+}
+
+static u8 get_scx(void)
+{
+	return read_memory(0xFF43);
+}
+
+int screen_enabled(void)
+{
+	return BIT_7(lcdc_register);
+}
+
+static void draw_blank(void)
+{
+
+}
+
+static void draw_scanline(struct point *pt)
+{
+	int bg_palette[4] = { 0, 1, 2, 3 };
+	u8 scanline = read_memory(0xFF44);
+	u8 bgp_data = read_memory(0xFF47);
+	u8 scy = get_scy();
+	u8 scx = get_scx();
+
+	bg_palette[0] = bgp_data & 0x3;
+	bg_palette[1] = (bgp_data >> 2) & 0x3;
+	bg_palette[2] = (bgp_data >> 4) & 0x3;
+	bg_palette[3] = (bgp_data >> 6) & 0x3;
+
+	if (!screen_enabled()) {
+		draw_blank();
+	} else {
+	}
+}
+
+void line(struct point *pt)
+{
+	draw_scanline(pt);
 }
 
 static void display_tiles(void)
 {
+	u8 scy = get_scy();
+	u8 scx = get_scx();
+	int offsetx = scx / 8;
+	int offsety = scy / 8;
+	int i, j;
+	u8 tile[64];
 
+	for (i = offsetx; i < WIDTH; ++i) {
+		for (j = offsety; j < HEIGHT; ++j) {
+			tile_data(tile, vram[i+j]);
+		}
+	}
 }
 
-static u8 read_register(u16 address)
+static void update_registers(void)
 {
-	u8 value = read_memory(address);
+	lcdc_register = read_memory(0xFF40);
+}
 
-	return value;
+void init_vram(void)
+{
+	vram = get_vram();
 }

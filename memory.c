@@ -174,8 +174,6 @@ void write_memory(u16 address, u8 value)
 			memory.sprite_table[offset] = value;
 		} else if (address <= 0xFEFF) {
 		} else if (address <= 0xFF7F) {
-			if (address == 0xFF40) {
-			}
 			offset = (address % MEM_IO_REGISTER);
 			memory.io_reg[offset] = value;
 		} else if (address <= 0xFFFE) {
@@ -183,6 +181,7 @@ void write_memory(u16 address, u8 value)
 			memory.hram[offset] = value;
 		} else {
 			memory.interrupt_enable = value & 0x01FF;
+			printf("Interrupt enable: %d\n", memory.interrupt_enable);
 		}
 		break;
 	default:
@@ -194,7 +193,7 @@ void write_memory(u16 address, u8 value)
 u8 read_memory(u16 address)
 {
 	u16 offset;
-	u8 ret = 0;
+	u8 ret = 0xFF;
 
 	switch (address >> 12) {
 	case 0x0:
