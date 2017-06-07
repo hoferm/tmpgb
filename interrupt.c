@@ -20,34 +20,35 @@ int execute_interrupt(void)
 	int interrupt_enable;
 	int interrupt_request;
 	int interrupt = 0;
+	int tmp;
 
 	if (interrupt_master_enable) {
 		interrupt_enable = read_memory(0xFFFF);
 		interrupt_request = read_memory(0xFF0F);
+		tmp = interrupt_enable & interrupt_request;
 
-		if (interrupt_enable && interrupt_request) {
-			if (BIT_0(interrupt_enable) && BIT_0(interrupt_request)) {
-				interrupt_request = RESET_BIT_0(interrupt_request);
-				interrupt = INT_VBLANK;
-			} else if (BIT_1(interrupt_enable) && BIT_1(interrupt_request)) {
-				interrupt_request = RESET_BIT_1(interrupt_request);
-				interrupt = INT_LCD;
-			} else if (BIT_2(interrupt_enable) && BIT_2(interrupt_request)) {
-				interrupt_request = RESET_BIT_2(interrupt_request);
-				interrupt = INT_TIMER;
-			} else if (BIT_3(interrupt_enable) && BIT_3(interrupt_request)) {
-				interrupt_request = RESET_BIT_3(interrupt_request);
-				interrupt = INT_SERIAL;
-			} else if (BIT_4(interrupt_enable) && BIT_4(interrupt_request)) {
-				interrupt_request = RESET_BIT_4(interrupt_request);
-				interrupt = INT_JOYPAD;
-			} else {
-				return interrupt;
-			}
+		if (!tmp) 
+			return interrupt;
 
-			write_memory(0xFF0F, interrupt_request);
-			interrupt_master_enable = 0;
+		if (BIT_0(tmp)) {
+			interrupt_request = RESET_BIT_0(interrupt_request);
+			interrupt = INT_VBLANK;
+		} else if (BIT_1(tmp)) {
+			interrupt_request = RESET_BIT_1(interrupt_request);
+			interrupt = INT_LCD;
+		} else if (BIT_2(tmp)) {
+			interrupt_request = RESET_BIT_2(interrupt_request);
+			interrupt = INT_TIMER;
+		} else if (BIT_3(tmp)) {
+			interrupt_request = RESET_BIT_3(interrupt_request);
+			interrupt = INT_SERIAL;
+		} else if (BIT_4(tmp)) {
+			interrupt_request = RESET_BIT_4(interrupt_request);
+			interrupt = INT_JOYPAD;
 		}
+
+		write_memory(0xFF0F, interrupt_request);
+		interrupt_master_enable = 0;
 	}
 
 	return interrupt;
