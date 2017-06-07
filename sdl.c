@@ -4,7 +4,7 @@
 #include "video.h"
 
 static SDL_Window *window;
-static SDL_Renderer *renderer;
+/* static SDL_Renderer *renderer; */
 static SDL_Surface *surface;
 
 int init_sdl(void)
@@ -23,12 +23,12 @@ int init_sdl(void)
 		goto out;
 	}
 
-	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+	/* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED); */
 
-	if (renderer == NULL) {
-		ret = -1;
-		goto out;
-	}
+	/* if (renderer == NULL) { */
+	/* 	ret = -1; */
+	/* 	goto out; */
+	/* } */
 
 	surface = SDL_GetWindowSurface(window);
 	SDL_FillRect(surface, NULL, SDL_MapRGB(surface->format, 0xFF, 0xFF, 0xFF));
@@ -50,8 +50,8 @@ void close_sdl(void)
 	SDL_DestroyWindow(window);
 	window = NULL;
 
-	SDL_DestroyRenderer(renderer);
-	renderer = NULL;
+	/* SDL_DestroyRenderer(renderer); */
+	/* renderer = NULL; */
 
 	SDL_Quit();
 }
