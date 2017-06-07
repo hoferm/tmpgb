@@ -143,41 +143,41 @@ void write_memory(u16 address, u8 value)
 		if (address >= 0x6000) {
 			change_mbc_mode(value);
 		}
-		offset = address % MEM_ROM;
+		offset = address - MEM_ROM;
 
 		break;
 	case 0x8:
 	case 0x9:
-		offset = address % MEM_VRAM;
+		offset = address - MEM_VRAM;
 
 		memory.vram[offset] = value;
 		break;
 	case 0xA:
 	case 0xB:
-		offset = address % MEM_RAM;
+		offset = address - MEM_RAM;
 
 		memory.curr_ram[offset] = value;
 		break;
 	case 0xC:
 	case 0xD:
-		offset = address % MEM_WRAM;
+		offset = address - MEM_WRAM;
 
 		memory.wram[offset] = value;
 		break;
 	case 0xE:
 	case 0xF:
 		if (address <= 0xFDFF) {
-			offset = (address % MEM_WRAM) - 0x2000;
+			offset = (address - MEM_WRAM) - 0x2000;
 			memory.wram[offset] = value;
 		} else if (address <= 0xFE9F) {
-			offset = (address % MEM_SPRITE_TABLE);
+			offset = (address - MEM_SPRITE_TABLE);
 			memory.sprite_table[offset] = value;
 		} else if (address <= 0xFEFF) {
 		} else if (address <= 0xFF7F) {
-			offset = (address % MEM_IO_REGISTER);
+			offset = (address - MEM_IO_REGISTER);
 			memory.io_reg[offset] = value;
 		} else if (address <= 0xFFFE) {
-			offset = (address % MEM_HIGH_RAM);
+			offset = (address - MEM_HIGH_RAM);
 			memory.hram[offset] = value;
 		} else {
 			memory.interrupt_enable = value & 0x01FF;
@@ -206,32 +206,32 @@ u8 read_memory(u16 address)
 	case 0x5:
 	case 0x6:
 	case 0x7:
-		offset = address % MEM_ROM;
+		offset = address - MEM_ROM;
 
 		ret = memory.curr_rom[offset];
 		break;
 	case 0x8:
 	case 0x9:
-		offset = address % MEM_VRAM;
+		offset = address - MEM_VRAM;
 
 		ret = memory.vram[offset];
 		break;
 	case 0xA:
 	case 0xB:
-		offset = address % MEM_RAM;
+		offset = address - MEM_RAM;
 
 		ret = memory.curr_ram[offset];
 		break;
 	case 0xC:
 	case 0xD:
-		offset = address % MEM_WRAM;
+		offset = address - MEM_WRAM;
 
 		ret = memory.wram[offset];
 		break;
 	case 0xE:
 	case 0xF:
 		if (address <= 0xFDFF) {
-			offset = address % 0xC000;
+			offset = address - 0xC000;
 			ret = memory.wram[offset];
 		} else if (address <= 0xFE9F) {
 			offset = address - MEM_SPRITE_TABLE;
