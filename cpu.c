@@ -15,10 +15,14 @@ static void init_cb_optable(void);
 void (*optable[256])(void);
 void (*cb_optable[256])(void);
 
-static struct cpu_reg {
-	u8 high;
-	u8 low;
-} AF, BC, DE, HL;
+static u8 B;
+static u8 C;
+static u8 D;
+static u8 E;
+static u8 H;
+static u8 L;
+static u8 F;
+static u8 A;
 
 static u16 PC;
 static u16 SP;
@@ -112,17 +116,17 @@ void fetch_opcode(void)
 
 static void set_flag(u8 flag)
 {
-	AF.low |= flag;
+	F |= flag;
 }
 
 static void reset_flag(u8 flag)
 {
-	AF.low &= (0xFF - flag);
+	F &= (0xFF - flag);
 }
 
 static u8 get_flag(u8 flag)
 {
-	return (AF.low & flag) ? 1 : 0;
+	return (F & flag) ? 1 : 0;
 }
 
 static u8 inc_8bit(u8 reg)
@@ -158,36 +162,36 @@ static void add(u8 val, int with_carry)
 	if (with_carry)
 		val += get_flag(CFLAG);
 
-	res = AF.high + val;
+	res = A + val;
 
 	if (res == 0)
 		set_flag(ZFLAG);
 
 	reset_flag(NFLAG);
 
-	if ((AF.high ^ val ^ res) & 0x10)
+	if ((A ^ val ^ res) & 0x10)
 		set_flag(HFLAG);
 
 	if (res > 255)
 		set_flag(CFLAG);
 
-	AF.high = res;
+	A = res;
 }
 
 static void add_HL(u16 val)
 {
-	int tmp = HL.high;
+	int tmp = H;
 	tmp <<= 8;
-	tmp += HL.low + val;
+	tmp += L + val;
 	if (tmp > 65535)
 		set_flag(CFLAG);
 
-	HL.high = tmp >> 8;
-	HL.low = tmp;
-	tmp = HL.high + (val >> 8);
+	H = tmp >> 8;
+	L = tmp;
+	tmp = H + (val >> 8);
 	tmp &= 0x0F;
 	tmp <<= 8;
-	tmp += HL.low + (val & 0x00FF);
+	tmp += L + (val & 0x00FF);
 	if (tmp > 4095)
 		set_flag(HFLAG);
 
@@ -201,25 +205,25 @@ static void sub(u8 val, int with_carry)
 	if (with_carry)
 		val += get_flag(CFLAG);
 
-	res = AF.high - val;
+	res = A - val;
 
 	if (res == 0)
 		set_flag(ZFLAG);
 
 	set_flag(NFLAG);
 
-	if ((AF.high & 0xF) >= (val & 0xF))
+	if ((A & 0xF) >= (val & 0xF))
 		set_flag(HFLAG);
 
-	if (AF.high >= val)
+	if (A >= val)
 		set_flag(CFLAG);
 }
 
 static void and(u8 val)
 {
-	AF.high &= val;
+	A &= val;
 
-	if (AF.high == 0)
+	if (A == 0)
 		set_flag(ZFLAG);
 
 	set_flag(HFLAG);
@@ -229,9 +233,9 @@ static void and(u8 val)
 
 static void xor(u8 val)
 {
-	AF.high ^= val;
+	A ^= val;
 
-	if (AF.high == 0)
+	if (A == 0)
 		set_flag(ZFLAG);
 
 	reset_flag(NFLAG);
@@ -241,9 +245,9 @@ static void xor(u8 val)
 
 static void or(u8 val)
 {
-	AF.high |= val;
+	A |= val;
 
-	if (AF.high == 0)
+	if (A == 0)
 		set_flag(ZFLAG);
 
 	reset_flag(NFLAG);
@@ -253,17 +257,17 @@ static void or(u8 val)
 
 static void cmp(u8 val)
 {
-	u8 tmp = AF.high - val;
+	u8 tmp = A - val;
 
 	if (tmp == 0)
 		set_flag(ZFLAG);
 
 	set_flag(NFLAG);
 
-	if ((AF.high & 0xF) < (val & 0xF))
+	if ((A & 0xF) < (val & 0xF))
 		set_flag(HFLAG);
 
-	if (AF.high < val)
+	if (A < val)
 		set_flag(CFLAG);
 }
 
@@ -277,16 +281,131 @@ static void rst(u8 offset)
 	PC = 0x0000 + offset;
 }
 
+static u8 sla(u8 reg)
+{
+	u8 res;
+
+	if (reg > 127)
+		set_flag(CFLAG);
+
+	res = reg << 1;
+
+	if (res == 0)
+		set_flag(ZFLAG);
+
+	reset_flag(NFLAG);
+	reset_flag(HFLAG);
+
+	return res;
+}
+
+static u8 srl(u8 reg)
+{
+	u8 res;
+
+	if ((reg % 2) != 0)
+		set_flag(CFLAG);
+
+	res = reg >> 1;
+
+	if (res == 0)
+		set_flag(ZFLAG);
+
+	reset_flag(NFLAG);
+	reset_flag(HFLAG);
+
+	return res;
+}
+
+static u8 sra(u8 reg)
+{
+	u8 res = srl(reg);
+	u8 bit = res & (1U << 6);
+
+	res = (res & ~(1U << 7)) | (bit << 7);
+	return res;
+}
+
+static u8 rl(u8 reg)
+{
+	u8 res = sla(reg);
+	u8 cflag = get_flag(CFLAG);
+
+	res = (res & ~1) | cflag;
+
+	return res;
+}
+
+static u8 rr(u8 reg)
+{
+	u8 res = srl(reg);
+	u8 cflag = get_flag(CFLAG);
+
+	res = (res & ~(1U << 7)) | (cflag << 7);
+
+	return res;
+}
+
+static u8 rlc(u8 reg)
+{
+	u8 cflag = get_flag(CFLAG);
+	u8 res = sla(reg);
+
+	res = (res & ~1) | cflag;
+
+	return res;
+}
+
+static u8 rrc(u8 reg)
+{
+	u8 cflag = get_flag(CFLAG);
+	u8 res = srl(reg);
+
+	res = (res & ~(1U << 7)) | cflag;
+
+	return res;
+}
+
+static u8 swap(u8 reg)
+{
+	u8 res = (reg >> 4) + (reg << 4);
+
+	if (res == 0)
+		set_flag(CFLAG);
+
+	reset_flag(NFLAG);
+	reset_flag(HFLAG);
+	reset_flag(CFLAG);
+
+	return res;
+}
+
+static void check_bit(u8 reg, u8 bit)
+{
+	if ((reg >> bit) & 1)
+		reset_flag(ZFLAG);
+	else
+		set_flag(ZFLAG);
+
+	reset_flag(NFLAG);
+	set_flag(HFLAG);
+}
+
+static u8 res_bit(u8 reg, u8 bit)
+{
+	return reg & (~(1 << bit));
+}
+
 void init_cpu(void)
 {
-	AF.high = 0x01;
-	AF.low = 0xB0;
-	BC.high = 0x00;
-	BC.low = 0x13;
-	DE.high = 0x00;
-	DE.low = 0xD8;
-	HL.high = 0x01;
-	HL.low = 0x4D;
+	A = 0x01;
+	F = 0xB0;
+	B = 0x00;
+	C = 0x13;
+	D = 0x00;
+	E = 0xD8;
+	H = 0x01;
+	L = 0x4D;
 	SP = 0xFFFE;
 
 	PC = 0x100;
@@ -305,56 +424,55 @@ static void op0x00(void)
 static void op0x01(void)
 {
 	u16 temp = fetch_16bit_data();
-	BC.high = temp >> 8;
-	BC.low = temp;
+	B = temp >> 8;
+	C = temp;
 }
 
 /* LD BC,A */
 static void op0x02(void)
 {
-	BC.high = 0;
-	BC.low = AF.high;
+	B = 0;
+	C = A;
 }
 
 /* INC BC */
 static void op0x03(void)
 {
-	BC.low++;
+	C++;
 
-	if (BC.low == 0)
-		BC.high++;
+	if (C == 0)
+		B++;
 
 }
 
 /* INC B */
 static void op0x04(void)
 {
-	BC.high = inc_8bit(BC.high);
+	B = inc_8bit(B);
 }
 
 /* DEC B */
 static void op0x05(void)
 {
-	BC.high = dec_8bit(BC.high);
+	B = dec_8bit(B);
 }
 
 /* LD B,n */
 static void op0x06(void)
 {
-	BC.high = fetch_8bit_data();
+	B = fetch_8bit_data();
 }
 
 /* RLCA */
 static void op0x07(void)
 {
-	if (AF.high > 127){
+	if (A > 127)
 		set_flag(CFLAG);
-	}
 
-	AF.high <<= 1;
-	AF.high += get_flag(CFLAG);
+	A <<= 1;
+	A += get_flag(CFLAG);
 
-	if (AF.high == 0)
+	if (A == 0)
 		set_flag(ZFLAG);
 
 	reset_flag(NFLAG);
@@ -372,58 +490,58 @@ static void op0x08(void)
 /* ADD HL,BC */
 static void op0x09(void)
 {
-	u16 tmp = BC.high;
+	u16 tmp = B;
 	tmp <<= 8;
-	add_HL(tmp + BC.low);
+	add_HL(tmp + C);
 }
 
 /* LD A,(BC) */
 static void op0x0A(void)
 {
-	u16 tmp = BC.high;
+	u16 tmp = B;
 	tmp <<= 8;
-	tmp += BC.low;
-	AF.high = read_memory(tmp);
+	tmp += C;
+	A = read_memory(tmp);
 }
 
 /* DEC BC */
 static void op0x0B(void)
 {
-	if (BC.low == 0)
-		BC.high--;
+	if (C == 0)
+		B--;
 
-	BC.low--;
+	C--;
 
 }
 
 /* INC C */
 static void op0x0C(void)
 {
-	BC.low = inc_8bit(BC.low);
+	C = inc_8bit(C);
 }
 
 /* DEC C */
 static void op0x0D(void)
 {
-	BC.low = dec_8bit(BC.low);
+	C = dec_8bit(C);
 }
 
 /* LD C,n */
 static void op0x0E(void)
 {
-	BC.low = fetch_8bit_data();
+	C = fetch_8bit_data();
 }
 
 /* RRCA */
 static void op0x0F(void)
 {
-	if (AF.high & 1)
+	if (A & 1)
 		set_flag(CFLAG);
 
-	AF.high >>= 1;
-	AF.high += get_flag(CFLAG) * 128;
+	A >>= 1;
+	A += get_flag(CFLAG) * 128;
 
-	if (AF.high == 0)
+	if (A == 0)
 		set_flag(ZFLAG);
 
 	reset_flag(HFLAG);
@@ -440,56 +558,56 @@ static void op0x10(void)
 static void op0x11(void)
 {
 	u16 tmp = fetch_16bit_data();
-	DE.high = tmp >> 8;
-	DE.low = tmp;
+	D = tmp >> 8;
+	E = tmp;
 }
 
 /* LD DE,A */
 static void op0x12(void)
 {
-	DE.high = 0;
-	DE.low = AF.high;
+	D = 0;
+	E = A;
 }
 
 /* INC DE */
 static void op0x13(void)
 {
-	DE.low++;
-	if (DE.low == 0)
-		DE.high++;
+	E++;
+	if (E == 0)
+		D++;
 
 }
 
 /* INC D */
 static void op0x14(void)
 {
-	DE.high = inc_8bit(DE.high);
+	D = inc_8bit(D);
 }
 
 /* DEC D */
 static void op0x15(void)
 {
-	DE.high = dec_8bit(DE.high);
+	D = dec_8bit(D);
 }
 
 /* LD D,n */
 static void op0x16(void)
 {
-	DE.high = fetch_8bit_data();
+	D = fetch_8bit_data();
 }
 
 /* RLA */
 static void op0x17(void)
 {
 	u8 tmp = get_flag(CFLAG);
-	if (AF.high > 127){
+	if (A > 127){
 		set_flag(CFLAG);
 	}
 
-	AF.high <<= 1;
-	AF.high += tmp;
+	A <<= 1;
+	A += tmp;
 
-	if (AF.high == 0)
+	if (A == 0)
 		set_flag(ZFLAG);
 
 	reset_flag(NFLAG);
@@ -505,58 +623,58 @@ static void op0x18(void)
 /* ADD HL,DE */
 static void op0x19(void)
 {
-	u16 tmp = DE.high;
+	u16 tmp = D;
 	tmp <<= 8;
-	add_HL(tmp + DE.low);
+	add_HL(tmp + E);
 }
 
 /* LD A,(DE) */
 static void op0x1A(void)
 {
-	u16 tmp = DE.high;
+	u16 tmp = D;
 	tmp <<= 8;
-	tmp += DE.low;
-	AF.high = read_memory(tmp);
+	tmp += E;
+	A = read_memory(tmp);
 }
 
 /* DEC DE */
 static void op0x1B(void)
 {
-	if (DE.low == 0)
-		DE.high--;
+	if (E == 0)
+		D--;
 
-	DE.low--;
+	E--;
 }
 
 /* INC E */
 static void op0x1C(void)
 {
-	DE.low = inc_8bit(DE.low);
+	E = inc_8bit(E);
 }
 
 /* DEC E */
 static void op0x1D(void)
 {
-	DE.low = dec_8bit(DE.low);
+	E = dec_8bit(E);
 }
 
 /* LD E,n */
 static void op0x1E(void)
 {
-	DE.low = fetch_8bit_data();
+	E = fetch_8bit_data();
 }
 
 /* RRA */
 static void op0x1F(void)
 {
 	u8 tmp = get_flag(CFLAG);
-	if (AF.high & 1)
+	if (A & 1)
 		set_flag(CFLAG);
 
-	AF.high >>= 1;
-	AF.high += tmp * 128;
+	A >>= 1;
+	A += tmp * 128;
 
-	if (AF.high == 0)
+	if (A == 0)
 		set_flag(ZFLAG);
 
 	reset_flag(HFLAG);
@@ -574,47 +692,47 @@ static void op0x20(void)
 static void op0x21(void)
 {
 	u16 tmp = fetch_16bit_data();
-	HL.high = tmp >> 8;
-	HL.low = tmp;
+	H = tmp >> 8;
+	L = tmp;
 }
 
 /* LDI (HL),A */
 static void op0x22(void)
 {
-	u16 tmp = HL.high;
+	u16 tmp = H;
 	tmp <<= 8;
-	tmp += HL.low;
-	write_memory(tmp, AF.high);
-	HL.low++;
-	if (HL.low == 0)
-		HL.high++;
+	tmp += L;
+	write_memory(tmp, A);
+	L++;
+	if (L == 0)
+		H++;
 }
 
 /* INC HL */
 static void op0x23(void)
 {
-	HL.low++;
-	if (HL.low == 0)
-		HL.high++;
+	L++;
+	if (L == 0)
+		H++;
 
 }
 
 /* INC H */
 static void op0x24(void)
 {
-	HL.high = inc_8bit(HL.high);
+	H = inc_8bit(H);
 }
 
 /* DEC H */
 static void op0x25(void)
 {
-	HL.high = dec_8bit(HL.high);
+	H = dec_8bit(H);
 }
 
 /* LD H,n */
 static void op0x26(void)
 {
-	HL.high = fetch_8bit_data();
+	H = fetch_8bit_data();
 }
 
 /* DAA */
@@ -633,52 +751,52 @@ static void op0x28(void)
 /* ADD HL,HL */
 static void op0x29(void)
 {
-	u16 tmp = HL.high;
+	u16 tmp = H;
 	tmp <<= 8;
-	add_HL(tmp + HL.low);
+	add_HL(tmp + L);
 }
 
 /* LDI A,(HL) */
 static void op0x2A(void)
 {
-	u16 tmp = HL.high;
+	u16 tmp = H;
 	tmp <<= 8;
-	tmp += HL.low;
-	AF.high = read_memory(tmp);
+	tmp += L;
+	A = read_memory(tmp);
 	op0x23();
 }
 
 /* DEC HL */
 static void op0x2B(void)
 {
-	if (HL.low == 0)
-		HL.high--;
+	if (L == 0)
+		H--;
 
-	HL.low--;
+	L--;
 }
 
 /* INC L */
 static void op0x2C(void)
 {
-	HL.low = inc_8bit(HL.low);
+	L = inc_8bit(L);
 }
 
 /* DEC L */
 static void op0x2D(void)
 {
-	HL.low = dec_8bit(HL.low);
+	L = dec_8bit(L);
 }
 
 /* LD L,n */
 static void op0x2E(void)
 {
-	HL.low = fetch_8bit_data();
+	L = fetch_8bit_data();
 }
 
 /* CPL */
 static void op0x2F(void)
 {
-	AF.high = ~AF.high;
+	A = ~A;
 	set_flag(NFLAG);
 	set_flag(HFLAG);
 }
@@ -699,15 +817,15 @@ static void op0x31(void)
 /* LDD (HL),A */
 static void op0x32(void)
 {
-	u16 tmp = HL.high;
+	u16 tmp = H;
 	tmp <<= 8;
-	tmp += HL.low;
-	write_memory(tmp, AF.high);
+	tmp += L;
+	write_memory(tmp, A);
 
-	if (HL.low == 0)
-		HL.high--;
+	if (L == 0)
+		H--;
 
-	HL.low--;
+	L--;
 }
 
 /* INC SP */
@@ -719,18 +837,18 @@ static void op0x33(void)
 /* INC (HL) */
 static void op0x34(void)
 {
-	u16 tmp = HL.high;
+	u16 tmp = H;
 	tmp <<= 8;
-	tmp += HL.low;
+	tmp += L;
 	write_memory(tmp, inc_8bit(read_memory(tmp)));
 }
 
 /* DEC (HL) */
 static void op0x35(void)
 {
-	u16 tmp = HL.high;
+	u16 tmp = H;
 	tmp <<= 8;
-	tmp += HL.low;
+	tmp += L;
 
 	write_memory(tmp, dec_8bit(read_memory(tmp)));
 
@@ -739,9 +857,9 @@ static void op0x35(void)
 /* LD (HL),n */
 static void op0x36(void)
 {
-	u16 tmp = HL.high;
+	u16 tmp = H;
 	tmp <<= 8;
-	tmp += HL.low;
+	tmp += L;
 	write_memory(tmp, fetch_8bit_data());
 }
 
@@ -769,10 +887,10 @@ static void op0x39(void)
 /* LDD A,(HL) */
 static void op0x3A(void)
 {
-	u16 tmp = HL.high;
+	u16 tmp = H;
 	tmp <<= 8;
-	tmp += HL.low;
-	AF.high = read_memory(tmp);
+	tmp += L;
+	A = read_memory(tmp);
 	op0x2B();
 }
 
@@ -785,19 +903,19 @@ static void op0x3B(void)
 /* INC A */
 static void op0x3C(void)
 {
-	AF.high = inc_8bit(AF.high);
+	A = inc_8bit(A);
 }
 
 /* DEC A */
 static void op0x3D(void)
 {
-	AF.high = dec_8bit(AF.high);
+	A = dec_8bit(A);
 }
 
 /* LD A,n */
 static void op0x3E(void)
 {
-	AF.high = fetch_8bit_data();
+	A = fetch_8bit_data();
 }
 
 /* CCF */
@@ -812,361 +930,361 @@ static void op0x3F(void)
 /* LD B,B */
 static void op0x40(void)
 {
-	BC.high = BC.high;
+	B = B;
 }
 
 /* LD B,C */
 static void op0x41(void)
 {
-	BC.high = BC.low;
+	B = C;
 }
 
 /* LD B,D */
 static void op0x42(void)
 {
-	BC.high = DE.high;
+	B = D;
 }
 
 /* LD B,E */
 static void op0x43(void)
 {
-	BC.high = DE.low;
+	B = E;
 }
 
 /* LD B,H */
 static void op0x44(void)
 {
-	BC.high = HL.high;
+	B = H;
 }
 
 /* LD B,L */
 static void op0x45(void)
 {
-	BC.high = HL.low;
+	B = L;
 }
 
 /* LD B,(HL)*/
 static void op0x46(void)
 {
-	u16 tmp = HL.high;
+	u16 tmp = H;
 	tmp <<= 8;
-	tmp += HL.low;
-	BC.high = read_memory(tmp);
+	tmp += L;
+	B = read_memory(tmp);
 }
 
 /* LD B,A */
 static void op0x47(void)
 {
-	BC.high = AF.high;
+	B = A;
 }
 
 /* LD C,B */
 static void op0x48(void)
 {
-	BC.low = BC.high;
+	C = B;
 }
 
 /* LD C,C */
 static void op0x49(void)
 {
-	BC.low = BC.low;
+	C = C;
 }
 
 /* LD C,D */
 static void op0x4A(void)
 {
-	BC.low = DE.high;
+	C = D;
 }
 
 /* LD C,E */
 static void op0x4B(void)
 {
-	BC.low = DE.low;
+	C = E;
 }
 
 /* LD C,H */
 static void op0x4C(void)
 {
-	BC.low = HL.high;
+	C = H;
 }
 
 /* LD C,L */
 static void op0x4D(void)
 {
-	BC.low = HL.low;
+	C = L;
 }
 
 /* LD C,(HL) */
 static void op0x4E(void)
 {
-	u16 tmp = HL.high;
+	u16 tmp = H;
 	tmp <<= 8;
-	tmp += HL.low;
-	BC.low = read_memory(tmp);
+	tmp += L;
+	C = read_memory(tmp);
 }
 
 /* LD C,A */
 static void op0x4F(void)
 {
-	BC.low = AF.high;
+	C = A;
 }
 
 /* LD D,B */
 static void op0x50(void)
 {
-	DE.high = BC.high;
+	D = B;
 }
 
 /* LD D,C */
 static void op0x51(void)
 {
-	DE.high = BC.low;
+	D = C;
 }
 
 /* LD D,D */
 static void op0x52(void)
 {
-	DE.high = DE.high;
+	D = D;
 }
 
 /* LD D,E */
 static void op0x53(void)
 {
-	DE.high = DE.low;
+	D = E;
 }
 
 /* LD D,H */
 static void op0x54(void)
 {
-	DE.high = HL.high;
+	D = H;
 }
 
 /* LD D,L */
 static void op0x55(void)
 {
-	DE.high = HL.low;
+	D = L;
 }
 
 /* LD D,(HL) */
 static void op0x56(void)
 {
-	u16 tmp = HL.high;
+	u16 tmp = H;
 	tmp <<= 8;
-	tmp += HL.low;
-	DE.high = read_memory(tmp);
+	tmp += L;
+	D = read_memory(tmp);
 }
 
 /* LD D,A */
 static void op0x57(void)
 {
-	DE.high = AF.high;
+	D = A;
 }
 
 /* LD E,B */
 static void op0x58(void)
 {
-	DE.low = BC.high;
+	E = B;
 }
 
 /* LD E,C */
 static void op0x59(void)
 {
-	DE.low = BC.low;
+	E = C;
 }
 
 /* LD E,D */
 static void op0x5A(void)
 {
-	DE.low = DE.high;
+	E = D;
 }
 
 /* LD E,E */
 static void op0x5B(void)
 {
-	DE.low = DE.low;
+	E = E;
 }
 
 /* LD E,H */
 static void op0x5C(void)
 {
-	DE.low = HL.high;
+	E = H;
 }
 
 /* LD E,L */
 static void op0x5D(void)
 {
-	DE.low = HL.low;
+	E = L;
 }
 
 /* LD E,(HL) */
 static void op0x5E(void)
 {
-	u16 tmp = HL.high;
+	u16 tmp = H;
 	tmp <<= 8;
-	tmp += HL.low;
-	DE.low = read_memory(tmp);
+	tmp += L;
+	E = read_memory(tmp);
 }
 
 /* LD E,A */
 static void op0x5F(void)
 {
-	DE.low = AF.high;
+	E = A;
 }
 
 /* LD H,B */
 static void op0x60(void)
 {
-	HL.high = BC.high;
+	H = B;
 }
 
 /* LD H,C */
 static void op0x61(void)
 {
-	HL.high = BC.low;
+	H = C;
 }
 
 /* LD H,D */
 static void op0x62(void)
 {
-	HL.high = DE.high;
+	H = D;
 }
 
 /* LD H,E */
 static void op0x63(void)
 {
-	HL.high = DE.low;
+	H = E;
 }
 
 /* LD H,H */
 static void op0x64(void)
 {
-	HL.high = HL.high;
+	H = H;
 }
 
 /* LD H,L */
 static void op0x65(void)
 {
-	HL.high = HL.low;
+	H = L;
 }
 
 /* LD H,(HL) */
 static void op0x66(void)
 {
-	u16 tmp = HL.high;
+	u16 tmp = H;
 	tmp <<= 8;
-	tmp += HL.low;
-	HL.high = read_memory(tmp);
+	tmp += L;
+	H = read_memory(tmp);
 }
 
 /* LD H,A */
 static void op0x67(void)
 {
-	HL.high = AF.high;
+	H = A;
 }
 
 /* LD L,B */
 static void op0x68(void)
 {
-	HL.low = BC.high;
+	L = B;
 }
 
 /* LD L,C */
 static void op0x69(void)
 {
-	HL.low = BC.low;
+	L = C;
 }
 
 /* LD L,D */
 static void op0x6A(void)
 {
-	HL.low = DE.high;
+	L = D;
 }
 
 /* LD L,E */
 static void op0x6B(void)
 {
-	HL.low = DE.low;
+	L = E;
 }
 
 /* LD L,H */
 static void op0x6C(void)
 {
-	HL.low = HL.high;
+	L = H;
 }
 
 /* LD L,L */
 static void op0x6D(void)
 {
-	HL.low = HL.low;
+	L = L;
 }
 
 /* LD L,(HL) */
 static void op0x6E(void)
 {
-	u16 tmp = HL.high;
+	u16 tmp = H;
 	tmp <<= 8;
-	tmp += HL.low;
-	HL.low = read_memory(tmp);
+	tmp += L;
+	L = read_memory(tmp);
 }
 
 /* LD L,A */
 static void op0x6F(void)
 {
-	HL.low = AF.high;
+	L = A;
 }
 
 /* LD (HL),B */
 static void op0x70(void)
 {
-	u16 tmp = HL.high;
+	u16 tmp = H;
 	tmp <<= 8;
-	tmp += HL.low;
-	write_memory(tmp, BC.high);
+	tmp += L;
+	write_memory(tmp, B);
 }
 
 /* LD (HL),C */
 static void op0x71(void)
 {
-	u16 tmp = HL.high;
+	u16 tmp = H;
 	tmp <<= 8;
-	tmp += HL.low;
-	write_memory(tmp, BC.low);
+	tmp += L;
+	write_memory(tmp, C);
 }
 
 /* LD (HL),D */
 static void op0x72(void)
 {
-	u16 tmp = HL.high;
+	u16 tmp = H;
 	tmp <<= 8;
-	tmp += HL.low;
-	write_memory(tmp, DE.high);
+	tmp += L;
+	write_memory(tmp, D);
 }
 
 /* LD (HL),E */
 static void op0x73(void)
 {
-	u16 tmp = HL.high;
+	u16 tmp = H;
 	tmp <<= 8;
-	tmp += HL.low;
-	write_memory(tmp, DE.low);
+	tmp += L;
+	write_memory(tmp, E);
 }
 
 /* LD (HL),H */
 static void op0x74(void)
 {
-	u16 tmp = HL.high;
+	u16 tmp = H;
 	tmp <<= 8;
-	tmp += HL.low;
-	write_memory(tmp, HL.high);
+	tmp += L;
+	write_memory(tmp, H);
 }
 
 /* LD (HL),L */
 static void op0x75(void)
 {
-	u16 tmp = HL.high;
+	u16 tmp = H;
 	tmp <<= 8;
-	tmp += HL.low;
-	write_memory(tmp, HL.low);
+	tmp += L;
+	write_memory(tmp, L);
 }
 
 /* HALT */
@@ -1178,459 +1296,459 @@ static void op0x76(void)
 /* LD (HL),A */
 static void op0x77(void)
 {
-	u16 tmp = HL.high;
+	u16 tmp = H;
 	tmp <<= 8;
-	tmp += HL.low;
-	write_memory(tmp, AF.high);
+	tmp += L;
+	write_memory(tmp, A);
 }
 
 /* LD A,B */
 static void op0x78(void)
 {
-	AF.high = BC.high;
+	A = B;
 }
 
 /* LD A,C */
 static void op0x79(void)
 {
-	AF.high = BC.low;
+	A = C;
 }
 
 /* LD A,D */
 static void op0x7A(void)
 {
-	AF.high = DE.high;
+	A = D;
 }
 
 /* LD A,E */
 static void op0x7B(void)
 {
-	AF.high = DE.low;
+	A = E;
 }
 
 /* LD A,H */
 static void op0x7C(void)
 {
-	AF.high = HL.high;
+	A = H;
 }
 
 /* LD A,L */
 static void op0x7D(void)
 {
-	AF.high = HL.low;
+	A = L;
 }
 
 /* LD A,(HL) */
 static void op0x7E(void)
 {
-	u16 tmp = HL.high;
+	u16 tmp = H;
 	tmp <<= 8;
-	tmp += HL.low;
-	AF.high = read_memory(tmp);
+	tmp += L;
+	A = read_memory(tmp);
 }
 
 /* LD A,A */
 static void op0x7F(void)
 {
-	AF.high = AF.high;
+	A = A;
 }
 
 /* ADD A,B */
 static void op0x80(void)
 {
-	add(BC.high, 0);
+	add(B, 0);
 }
 
 /* ADD A,C */
 static void op0x81(void)
 {
-	add(BC.low, 0);
+	add(C, 0);
 }
 
 /* ADD A,D */
 static void op0x82(void)
 {
-	add(DE.high, 0);
+	add(D, 0);
 }
 
 /* ADD A,E */
 static void op0x83(void)
 {
-	add(DE.low, 0);
+	add(E, 0);
 }
 
 /* ADD A,H */
 static void op0x84(void)
 {
-	add(HL.high, 0);
+	add(H, 0);
 }
 
 /* ADD A,L */
 static void op0x85(void)
 {
-	add(HL.low, 0);
+	add(L, 0);
 }
 
 /* ADD A,(HL) */
 static void op0x86(void)
 {
-	u16 tmp = (HL.high << 8) + HL.low;
+	u16 tmp = (H << 8) + L;
 	add(read_memory(tmp), 0);
 }
 
 /* ADD A,A */
 static void op0x87(void)
 {
-	add(AF.high, 0);
+	add(A, 0);
 }
 
 /* ADC A,B */
 static void op0x88(void)
 {
-	add(BC.high, 1);
+	add(B, 1);
 }
 
 /* ADC A,C */
 static void op0x89(void)
 {
-	add(BC.low, 1);
+	add(C, 1);
 }
 
 /* ADC A,D */
 static void op0x8A(void)
 {
-	add(DE.high, 1);
+	add(D, 1);
 }
 
 /* ADC A,E */
 static void op0x8B(void)
 {
-	add(DE.low, 1);
+	add(E, 1);
 }
 
 /* ADC A,H */
 static void op0x8C(void)
 {
-	add(HL.high, 1);
+	add(H, 1);
 }
 
 /* ADC A,L */
 static void op0x8D(void)
 {
-	add(HL.low, 1);
+	add(L, 1);
 }
 
 /* ADC A,(HL) */
 static void op0x8E(void)
 {
-	u16 tmp = HL.high;
+	u16 tmp = H;
 	tmp <<= 8;
-	tmp += HL.low;
+	tmp += L;
 	add(read_memory(tmp), 1);
 }
 
 /* ADC A,A */
 static void op0x8F(void)
 {
-	add(AF.high, 1);
+	add(A, 1);
 }
 
 /* SUB A,B */
 static void op0x90(void)
 {
-	sub(BC.high, 0);
+	sub(B, 0);
 }
 
 /* SUB A,C */
 static void op0x91(void)
 {
-	sub(BC.low, 0);
+	sub(C, 0);
 }
 
 /* SUB A,D */
 static void op0x92(void)
 {
-	sub(DE.high, 0);
+	sub(D, 0);
 }
 
 /* SUB A,E */
 static void op0x93(void)
 {
-	sub(DE.low, 0);
+	sub(E, 0);
 }
 
 /* SUB A,H */
 static void op0x94(void)
 {
-	sub(HL.high, 0);
+	sub(H, 0);
 }
 
 /* SUB A,L */
 static void op0x95(void)
 {
-	sub(HL.low, 0);
+	sub(L, 0);
 }
 
 /* SUB A,(HL) */
 static void op0x96(void)
 {
-	u16 tmp = HL.high;
+	u16 tmp = H;
 	tmp <<= 8;
-	tmp += HL.low;
+	tmp += L;
 	sub(read_memory(tmp), 0);
 }
 
 /* SUB A,A */
 static void op0x97(void)
 {
-	sub(AF.high, 0);
+	sub(A, 0);
 }
 
 /* SBC A,B */
 static void op0x98(void)
 {
-	sub(BC.high, 1);
+	sub(B, 1);
 }
 
 /* SBC A,C */
 static void op0x99(void)
 {
-	sub(BC.low, 1);
+	sub(C, 1);
 }
 
 /* SBC A,D */
 static void op0x9A(void)
 {
-	sub(DE.high, 1);
+	sub(D, 1);
 }
 
 /* SBC A,E */
 static void op0x9B(void)
 {
-	sub(DE.low, 1);
+	sub(E, 1);
 }
 
 /* SBC A,H */
 static void op0x9C(void)
 {
-	sub(HL.high, 1);
+	sub(H, 1);
 }
 
 /* SBC A,L */
 static void op0x9D(void)
 {
-	sub(HL.low, 1);
+	sub(L, 1);
 }
 
 /* SBC A,(HL) */
 static void op0x9E(void)
 {
-	u16 tmp = HL.high;
+	u16 tmp = H;
 	tmp <<= 8;
-	tmp += HL.low;
+	tmp += L;
 	sub(read_memory(tmp), 1);
 }
 
 /* SBC A,A */
 static void op0x9F(void)
 {
-	sub(AF.high, 1);
+	sub(A, 1);
 }
 
 /* AND A,B */
 static void op0xA0(void)
 {
-	and(BC.high);
+	and(B);
 }
 
 /* AND A,C */
 static void op0xA1(void)
 {
-	and(BC.low);
+	and(C);
 }
 
 /* AND A,D */
 static void op0xA2(void)
 {
-	and(DE.high);
+	and(D);
 }
 
 /* AND A,E */
 static void op0xA3(void)
 {
-	and(DE.low);
+	and(E);
 }
 
 /* AND A,H */
 static void op0xA4(void)
 {
-	and(HL.high);
+	and(H);
 }
 
 /* AND A,L */
 static void op0xA5(void)
 {
-	and(HL.low);
+	and(L);
 }
 
 /* AND A,(HL)*/
 static void op0xA6(void)
 {
-	u16 tmp = (HL.high << 8) + HL.low;
+	u16 tmp = (H << 8) + L;
 	and(read_memory(tmp));
 }
 
 /* AND A,A */
 static void op0xA7(void)
 {
-	and(AF.high);
+	and(A);
 }
 
 /* XOR A,B */
 static void op0xA8(void)
 {
-	xor(BC.high);
+	xor(B);
 }
 
 /* XOR A,C */
 static void op0xA9(void)
 {
-	xor(BC.low);
+	xor(C);
 }
 
 /* XOR A,D */
 static void op0xAA(void)
 {
-	xor(DE.high);
+	xor(D);
 }
 
 /* XOR A,E */
 static void op0xAB(void)
 {
-	xor(DE.low);
+	xor(E);
 }
 
 /* XOR A,H */
 static void op0xAC(void)
 {
-	xor(HL.high);
+	xor(H);
 }
 
 /* XOR A,L */
 static void op0xAD(void)
 {
-	xor(HL.low);
+	xor(L);
 }
 
 /* XOR A,(HL) */
 static void op0xAE(void)
 {
-	u16 tmp = (HL.high << 8) + HL.low;
+	u16 tmp = (H << 8) + L;
 	xor(read_memory(tmp));
 }
 
 /* XOR A,A */
 static void op0xAF(void)
 {
-	AF.high = 0;
+	A = 0;
 }
 
 /* OR A,B  */
 static void op0xB0(void)
 {
-	or(BC.high);
+	or(B);
 }
 
 /* OR A,C */
 static void op0xB1(void)
 {
-	or(BC.low);
+	or(C);
 }
 
 /* OR A,D */
 static void op0xB2(void)
 {
-	or(DE.high);
+	or(D);
 }
 
 /* OR A,E */
 static void op0xB3(void)
 {
-	or(DE.low);
+	or(E);
 }
 
 /* OR A,H */
 static void op0xB4(void)
 {
-	or(HL.high);
+	or(H);
 }
 
 /* OR A,L */
 static void op0xB5(void)
 {
-	or(HL.low);
+	or(L);
 }
 
 /* OR A,(HL) */
 static void op0xB6(void)
 {
-	u8 tmp = (HL.high << 8) + HL.low;
+	u8 tmp = (H << 8) + L;
 	or(read_memory(tmp));
 }
 
 /* OR A,A */
 static void op0xB7(void)
 {
-	or(AF.high);
+	or(A);
 }
 
 /* CP A,B */
 static void op0xB8(void)
 {
-	cmp(BC.high);
+	cmp(B);
 }
 
 /* CP A,C */
 static void op0xB9(void)
 {
-	cmp(BC.low);
+	cmp(C);
 }
 
 /* CP A,D */
 static void op0xBA(void)
 {
-	cmp(DE.high);
+	cmp(D);
 }
 
 /* CP A,E */
 static void op0xBB(void)
 {
-	cmp(DE.low);
+	cmp(E);
 }
 
 /* CP A,H */
 static void op0xBC(void)
 {
-	cmp(HL.high);
+	cmp(H);
 }
 
 /* CP A,L */
 static void op0xBD(void)
 {
-	cmp(HL.low);
+	cmp(L);
 }
 
 /* CP A,(HL) */
 static void op0xBE(void)
 {
-	u16 tmp = (HL.high << 8) + HL.low;
+	u16 tmp = (H << 8) + L;
 	cmp(read_memory(tmp));
 }
 
 /* CP A,A */
 static void op0xBF(void)
 {
-	cmp(AF.high);
+	cmp(A);
 }
 
 /* RET NZ */
@@ -1645,8 +1763,8 @@ static void op0xC1(void)
 {
 	u16 tmp = pop_stack();
 
-	BC.high = tmp >> 8;
-	BC.low = tmp;
+	B = tmp >> 8;
+	C = tmp;
 }
 
 /* JP NZ,nn */
@@ -1683,7 +1801,7 @@ static void op0xC4(void)
 /* PUSH BC */
 static void op0xC5(void)
 {
-	push_stack(BC.low, BC.high);
+	push_stack(C, B);
 }
 
 /* ADD A,n */
@@ -1786,8 +1904,8 @@ static void op0xD1(void)
 {
 	u16 tmp = pop_stack();
 
-	DE.high = tmp >> 8;
-	DE.low = tmp;
+	D = tmp >> 8;
+	E = tmp;
 }
 
 /* JP NC,nn */
@@ -1824,8 +1942,8 @@ static void op0xD4(void)
 /* PUSH DE */
 static void op0xD5(void)
 {
-	u8 low = DE.low;
-	u8 high = DE.high;
+	u8 low = E;
+	u8 high = D;
 
 	push_stack(low, high);
 }
@@ -1920,7 +2038,7 @@ static void op0xE0(void)
 
 	address += 0xFF00;
 
-	write_memory(address, AF.high);
+	write_memory(address, A);
 }
 
 /* POP HL */
@@ -1928,15 +2046,15 @@ static void op0xE1(void)
 {
 	u16 tmp = pop_stack();
 
-	HL.high = tmp >> 8;
-	HL.low = tmp;
+	H = tmp >> 8;
+	L = tmp;
 }
 
 /* LD (C),A */
 static void op0xE2(void)
 {
-	u16 address = 0xFF00 + BC.low;
-	write_memory(address, AF.high);
+	u16 address = 0xFF00 + C;
+	write_memory(address, A);
 }
 
 /* N/A */
@@ -1954,7 +2072,7 @@ static void op0xE4(void)
 /* PUSH HL */
 static void op0xE5(void)
 {
-	push_stack(HL.low, HL.high);
+	push_stack(L, H);
 }
 
 /* AND A,n */
@@ -1991,14 +2109,14 @@ static void op0xE8(void)
 /* JP (HL) */
 static void op0xE9(void)
 {
-	PC = (HL.high << 8) + HL.low;
+	PC = (H << 8) + L;
 }
 
 /* LD (nn),A */
 static void op0xEA(void)
 {
 	u16 address = fetch_16bit_data();
-	write_memory(address, AF.high);
+	write_memory(address, A);
 }
 
 /* N/A */
@@ -2037,7 +2155,7 @@ static void op0xF0(void)
 {
 	u8 tmp = fetch_8bit_data();
 
-	AF.high = read_memory(0xFF00 + tmp);
+	A = read_memory(0xFF00 + tmp);
 }
 
 /* POP AF */
@@ -2045,16 +2163,16 @@ static void op0xF1(void)
 {
 	u16 tmp = pop_stack();
 
-	AF.high = tmp >> 8;
-	AF.low = tmp & 0xFF;
+	A = tmp >> 8;
+	F = tmp & 0xFF;
 }
 
 /* LD A,(C) */
 static void op0xF2(void)
 {
-	u8 tmp = read_memory(0xFF00 + BC.low);
+	u8 tmp = read_memory(0xFF00 + C);
 
-	AF.high = tmp;
+	A = tmp;
 }
 
 /* DI */
@@ -2072,7 +2190,7 @@ static void op0xF4(void)
 /* PUSH AF */
 static void op0xF5(void)
 {
-	push_stack(AF.low, AF.high);
+	push_stack(F, A);
 }
 
 /* OR A,n */
@@ -2099,8 +2217,8 @@ static void op0xF8(void)
 	else
 		reset_flag(CFLAG);
 
-	HL.low = result & 0x00FF;
-	HL.high = result >> 8;
+	L = result & 0x00FF;
+	H = result >> 8;
 	result = 0;
 	result = (SP & 0x0FFF) + (value & 0x0FFF);
 	if (result > 0x0FFF)
@@ -2115,9 +2233,9 @@ static void op0xF8(void)
 /* LD SP,HL */
 static void op0xF9(void)
 {
-	u16 tmp = HL.high;
+	u16 tmp = H;
 	tmp <<= 8;
-	tmp += HL.low;
+	tmp += L;
 	SP = tmp;
 }
 
@@ -2126,7 +2244,7 @@ static void op0xFA(void)
 {
 	u16 address = fetch_16bit_data();
 
-	AF.high = read_memory(address);
+	A = read_memory(address);
 }
 
 /* EI */
@@ -2158,6 +2276,1496 @@ static void op0xFE(void)
 static void op0xFF(void)
 {
 	rst(0x38);
+}
+
+/* RLC B */
+static void CB_op0x00(void)
+{
+	B = rlc(B);
+}
+
+/* RLC C */
+static void CB_op0x01(void)
+{
+	C = rlc(C);
+}
+
+/* RLC D */
+static void CB_op0x02(void)
+{
+	D = rlc(D);
+}
+
+/* RLC E */
+static void CB_op0x03(void)
+{
+	E = rlc(E);
+}
+
+/* RLC H */
+static void CB_op0x04(void)
+{
+	H = rlc(H);
+}
+
+/* RLC L */
+static void CB_op0x05(void)
+{
+	L = rlc(L);
+}
+
+/* RLC (HL) */
+static void CB_op0x06(void)
+{
+	u16 address = (H << 8) + L;
+	u8 reg = read_memory(address);
+
+	reg = rlc(reg);
+	write_memory(address, reg);
+}
+
+/* RLC A */
+static void CB_op0x07(void)
+{
+	A = rlc(A);
+}
+
+/* RRC B */
+static void CB_op0x08(void)
+{
+	B = rrc(B);
+}
+
+/* RRC C */
+static void CB_op0x09(void)
+{
+	C = rrc(C);
+}
+
+/* RRC D */
+static void CB_op0x0A(void)
+{
+	D = rrc(D);
+}
+
+/* RRC E */
+static void CB_op0x0B(void)
+{
+	E = rrc(D);
+}
+
+/* RRC H */
+static void CB_op0x0C(void)
+{
+	H = rrc(H);
+}
+
+/* RRC L */
+static void CB_op0x0D(void)
+{
+	L = rrc(L);
+}
+
+/* RRC (HL) */
+static void CB_op0x0E(void)
+{
+	u16 address = (H << 8) + L;
+	u8 reg = read_memory(address);
+
+	reg = rrc(reg);
+	write_memory(address, reg);
+}
+
+/* RRC A */
+static void CB_op0x0F(void)
+{
+	A = rrc(A);
+}
+
+/* RL B */
+static void CB_op0x10(void)
+{
+	B = rl(B);
+}
+
+/* RL C */
+static void CB_op0x11(void)
+{
+	C = rl(C);
+}
+
+/* RL D */
+static void CB_op0x12(void)
+{
+	D = rl(D);
+}
+
+/* RL E */
+static void CB_op0x13(void)
+{
+	E = rl(E);
+}
+
+/* RL H */
+static void CB_op0x14(void)
+{
+	H = rl(H);
+}
+
+/* RL L */
+static void CB_op0x15(void)
+{
+	L = rl(L);
+}
+
+/* RL (HL) */
+static void CB_op0x16(void)
+{
+	u16 address = (H << 8) + L;
+	u8 reg = read_memory(address);
+
+	reg = rl(reg);
+	write_memory(address, reg);
+}
+
+/* RL A */
+static void CB_op0x17(void)
+{
+	A = rl(A);
+}
+
+/* RR B */
+static void CB_op0x18(void)
+{
+	B = rr(B);
+}
+
+/* RR C */
+static void CB_op0x19(void)
+{
+	C = rr(C);
+}
+
+/* RR D */
+static void CB_op0x1A(void)
+{
+	D = rr(D);
+}
+
+/* RR E */
+static void CB_op0x1B(void)
+{
+	E = rr(E);
+}
+
+/* RR H */
+static void CB_op0x1C(void)
+{
+	H = rr(H);
+}
+
+/* RR L */
+static void CB_op0x1D(void)
+{
+	L = rr(L);
+}
+
+/* RR (HL) */
+static void CB_op0x1E(void)
+{
+	u16 address = (H << 8) + L;
+	u8 reg = read_memory(address);
+
+	reg = rr(reg);
+	write_memory(address, reg);
+}
+
+/* RR A */
+static void CB_op0x1F(void)
+{
+	A = rr(A);
+}
+
+/* SLA B */
+static void CB_op0x20(void)
+{
+	B = sla(B);
+}
+
+/* SLA C */
+static void CB_op0x21(void)
+{
+	C = sla(C);
+}
+
+/* SLA D */
+static void CB_op0x22(void)
+{
+	D = sla(D);
+}
+
+/* SLA E */
+static void CB_op0x23(void)
+{
+	E = sla(E);
+}
+
+/* SLA H */
+static void CB_op0x24(void)
+{
+	H = sla(H);
+}
+
+/* SLA L */
+static void CB_op0x25(void)
+{
+	L = sla(L);
+}
+
+/* SLA (HL) */
+static void CB_op0x26(void)
+{
+	u16 address = (H << 8) + L;
+	u8 reg = read_memory(address);
+
+	reg = sla(reg);
+	write_memory(address, reg);
+}
+
+/* SLA A */
+static void CB_op0x27(void)
+{
+	A = sla(A);
+}
+
+/* SRA B */
+static void CB_op0x28(void)
+{
+	B = sra(B);
+}
+
+/* SRA C */
+static void CB_op0x29(void)
+{
+	C = sra(C);
+}
+
+/* SRA D */
+static void CB_op0x2A(void)
+{
+	D = sra(D);
+}
+
+/* SRA E */
+static void CB_op0x2B(void)
+{
+	E = sra(E);
+}
+
+/* SRA H */
+static void CB_op0x2C(void)
+{
+	H = sra(H);
+}
+
+/* SRA L */
+static void CB_op0x2D(void)
+{
+	L = sra(L);
+}
+
+/* SRA (HL) */
+static void CB_op0x2E(void)
+{
+	u16 address = (H << 8) + L;
+	u8 reg = read_memory(address);
+
+	reg = sra(reg);
+	write_memory(address, reg);
+}
+
+/* SRA A */
+static void CB_op0x2F(void)
+{
+	A = sra(A);
+}
+
+/* SWAP B */
+static void CB_op0x30(void)
+{
+	B = swap(B);
+}
+
+/* SWAP C */
+static void CB_op0x31(void)
+{
+	C = swap(C);
+}
+
+/* SWAP D */
+static void CB_op0x32(void)
+{
+	D = swap(D);
+}
+
+/* SWAP E */
+static void CB_op0x33(void)
+{
+	E = swap(E);
+}
+
+/* SWAP H */
+static void CB_op0x34(void)
+{
+	H = swap(H);
+}
+
+/* SWAP L */
+static void CB_op0x35(void)
+{
+	L = swap(L);
+}
+
+/* SWAP (HL) */
+static void CB_op0x36(void)
+{
+	u16 address = (H << 8) + L;
+	u8 reg = read_memory(address);
+
+	reg = swap(reg);
+	write_memory(address, reg);
+}
+
+/* SWAP A */
+static void CB_op0x37(void)
+{
+	A = swap(A);
+}
+
+/* SRL B */
+static void CB_op0x38(void)
+{
+	B = srl(B);
+}
+
+/* SRL C */
+static void CB_op0x39(void)
+{
+	C = srl(C);
+}
+
+/* SRL D */
+static void CB_op0x3A(void)
+{
+	D = srl(D);
+}
+
+/* SRL E */
+static void CB_op0x3B(void)
+{
+	E = srl(E);
+}
+
+/* SRL H */
+static void CB_op0x3C(void)
+{
+	H = srl(H);
+}
+
+/* SRL L */
+static void CB_op0x3D(void)
+{
+	L = srl(L);
+}
+
+/* SRL (HL) */
+static void CB_op0x3E(void)
+{
+	u16 address = (H << 8) + L;
+	u8 reg = read_memory(address);
+
+	reg = srl(reg);
+	write_memory(address, reg);
+}
+
+/* SRL A */
+static void CB_op0x3F(void)
+{
+	A = srl(A);
+}
+
+/* BIT 0,B */
+static void CB_op0x40(void)
+{
+	check_bit(B, 0);
+}
+
+/* BIT 0,C */
+static void CB_op0x41(void)
+{
+	check_bit(C, 0);
+}
+
+/* BIT 0,D */
+static void CB_op0x42(void)
+{
+	check_bit(D, 0);
+}
+
+/* BIT 0,E */
+static void CB_op0x43(void)
+{
+	check_bit(E, 0);
+}
+
+/* BIT 0,H */
+static void CB_op0x44(void)
+{
+	check_bit(H, 0);
+}
+
+/* BIT 0,L */
+static void CB_op0x45(void)
+{
+	check_bit(L, 0);
+}
+
+/* BIT 0,(HL) */
+static void CB_op0x46(void)
+{
+	u16 address = (H << 8) + L;
+	u8 reg = read_memory(address);
+	check_bit(reg, 0);
+}
+
+/* BIT 0,A */
+static void CB_op0x47(void)
+{
+	check_bit(A, 0);
+}
+
+/* BIT 1,B */
+static void CB_op0x48(void)
+{
+	check_bit(B, 1);
+}
+
+/* BIT 1,C */
+static void CB_op0x49(void)
+{
+	check_bit(C, 1);
+}
+
+/* BIT 1,D */
+static void CB_op0x4A(void)
+{
+	check_bit(D, 1);
+}
+
+/* BIT 1,E */
+static void CB_op0x4B(void)
+{
+	check_bit(E, 1);
+}
+
+/* BIT 1,H */
+static void CB_op0x4C(void)
+{
+	check_bit(H, 1);
+}
+
+/* BIT 1,L */
+static void CB_op0x4D(void)
+{
+	check_bit(L, 1);
+}
+
+/* BIT 1,(HL) */
+static void CB_op0x4E(void)
+{
+	u16 address = (H << 8) + L;
+	u8 reg = read_memory(address);
+	check_bit(reg, 1);
+}
+
+/* BIT 1,A */
+static void CB_op0x4F(void)
+{
+	check_bit(A, 1);
+}
+
+/* BIT 2,B */
+static void CB_op0x50(void)
+{
+	check_bit(B, 2);
+}
+
+/* BIT 2,C */
+static void CB_op0x51(void)
+{
+	check_bit(C, 2);
+}
+
+/* BIT 2,D */
+static void CB_op0x52(void)
+{
+	check_bit(D, 2);
+}
+
+/* BIT 2,E */
+static void CB_op0x53(void)
+{
+	check_bit(E, 2);
+}
+
+/* BIT 2,H */
+static void CB_op0x54(void)
+{
+	check_bit(H, 2);
+}
+
+/* BIT 2,L */
+static void CB_op0x55(void)
+{
+	check_bit(L, 2);
+}
+
+/* BIT 2,(HL) */
+static void CB_op0x56(void)
+{
+	u16 address = (H << 8) + L;
+	u8 reg = read_memory(address);
+	check_bit(reg, 2);
+}
+
+/* BIT 2,A */
+static void CB_op0x57(void)
+{
+	check_bit(A, 2);
+}
+
+/* BIT 3,B */
+static void CB_op0x58(void)
+{
+	check_bit(B, 3);
+}
+
+/* BIT 3,C */
+static void CB_op0x59(void)
+{
+	check_bit(C, 3);
+}
+
+/* BIT 3,D */
+static void CB_op0x5A(void)
+{
+	check_bit(D, 3);
+}
+
+/* BIT 3,E */
+static void CB_op0x5B(void)
+{
+	check_bit(E, 3);
+}
+
+/* BIT 3,H */
+static void CB_op0x5C(void)
+{
+	check_bit(H, 3);
+}
+
+/* BIT 3,L */
+static void CB_op0x5D(void)
+{
+	check_bit(L, 3);
+}
+
+/* BIT 3,(HL) */
+static void CB_op0x5E(void)
+{
+	u16 address = (H << 8) + L;
+	u8 reg = read_memory(address);
+	check_bit(reg, 3);
+}
+
+/* BIT 3,A */
+static void CB_op0x5F(void)
+{
+	check_bit(A, 3);
+}
+
+/* BIT 4,B */
+static void CB_op0x60(void)
+{
+	check_bit(B, 4);
+}
+
+/* BIT 4,C */
+static void CB_op0x61(void)
+{
+	check_bit(C, 4);
+}
+
+/* BIT 4,D */
+static void CB_op0x62(void)
+{
+	check_bit(D, 4);
+}
+
+/* BIT 4,E */
+static void CB_op0x63(void)
+{
+	check_bit(E, 4);
+}
+
+/* BIT 4,H */
+static void CB_op0x64(void)
+{
+	check_bit(H, 4);
+}
+
+/* BIT 4,L */
+static void CB_op0x65(void)
+{
+	check_bit(L, 4);
+}
+
+/* BIT 4,(HL) */
+static void CB_op0x66(void)
+{
+	u16 address = (H << 8) + L;
+	u8 reg = read_memory(address);
+	check_bit(reg, 4);
+}
+
+/* BIT 4,A */
+static void CB_op0x67(void)
+{
+	check_bit(A, 4);
+}
+
+/* BIT 5,B */
+static void CB_op0x68(void)
+{
+	check_bit(B, 5);
+}
+
+/* BIT 5,C */
+static void CB_op0x69(void)
+{
+	check_bit(C, 5);
+}
+
+/* BIT 5,D */
+static void CB_op0x6A(void)
+{
+	check_bit(D, 5);
+}
+
+/* BIT 5,E */
+static void CB_op0x6B(void)
+{
+	check_bit(E, 5);
+}
+
+/* BIT 5,H */
+static void CB_op0x6C(void)
+{
+	check_bit(H, 5);
+}
+
+/* BIT 5,L */
+static void CB_op0x6D(void)
+{
+	check_bit(L, 5);
+}
+
+/* BIT 5,(HL) */
+static void CB_op0x6E(void)
+{
+	u16 address = (H << 8) + L;
+	u8 reg = read_memory(address);
+	check_bit(reg, 5);
+}
+
+/* BIT 5,A */
+static void CB_op0x6F(void)
+{
+	check_bit(A, 5);
+}
+
+/* BIT 6,B */
+static void CB_op0x70(void)
+{
+	check_bit(B, 6);
+}
+
+/* BIT 6,C */
+static void CB_op0x71(void)
+{
+	check_bit(C, 6);
+}
+
+/* BIT 6,D */
+static void CB_op0x72(void)
+{
+	check_bit(D, 6);
+}
+
+/* BIT 6,E */
+static void CB_op0x73(void)
+{
+	check_bit(E, 6);
+}
+
+/* BIT 6,H */
+static void CB_op0x74(void)
+{
+	check_bit(H, 6);
+}
+
+/* BIT 6,L */
+static void CB_op0x75(void)
+{
+	check_bit(L, 6);
+}
+
+/* BIT 6,(HL) */
+static void CB_op0x76(void)
+{
+	u16 address = (H << 8) + L;
+	u8 reg = read_memory(address);
+	check_bit(reg, 6);
+}
+
+/* BIT 6,A */
+static void CB_op0x77(void)
+{
+	check_bit(A, 6);
+}
+
+/* BIT 7,B */
+static void CB_op0x78(void)
+{
+	check_bit(B, 7);
+}
+
+/* BIT 7,C */
+static void CB_op0x79(void)
+{
+	check_bit(C, 7);
+}
+
+/* BIT 7,D */
+static void CB_op0x7A(void)
+{
+	check_bit(D, 7);
+}
+
+/* BIT 7,E */
+static void CB_op0x7B(void)
+{
+	check_bit(E, 7);
+}
+
+/* BIT 7,H */
+static void CB_op0x7C(void)
+{
+	check_bit(H, 7);
+}
+
+/* BIT 7,L */
+static void CB_op0x7D(void)
+{
+	check_bit(L, 7);
+}
+
+/* BIT 7,(HL) */
+static void CB_op0x7E(void)
+{
+	u16 address = (H << 8) + L;
+	u8 reg = read_memory(address);
+	check_bit(reg, 7);
+}
+
+/* BIT 7,A */
+static void CB_op0x7F(void)
+{
+	check_bit(A, 7);
+}
+
+/* RES 0,B */
+static void CB_op0x80(void)
+{
+	B = res_bit(B, 0);
+}
+
+/* RES 0,C */
+static void CB_op0x81(void)
+{
+	C = res_bit(C, 0);
+}
+
+/* RES 0,D */
+static void CB_op0x82(void)
+{
+	D = res_bit(D, 0);
+}
+
+/* RES 0,E */
+static void CB_op0x83(void)
+{
+	E = res_bit(E, 0);
+}
+
+/* RES 0,H */
+static void CB_op0x84(void)
+{
+	H = res_bit(H, 0);
+}
+
+/* RES 0,L */
+static void CB_op0x85(void)
+{
+	L = res_bit(L, 0);
+}
+
+/* RES 0,(HL) */
+static void CB_op0x86(void)
+{
+	u16 address = (H << 8) + L;
+	u8 reg = read_memory(address);
+	reg = res_bit(reg, 0);
+	write_memory(address, reg);
+}
+
+/* RES 0,A */
+static void CB_op0x87(void)
+{
+	A = res_bit(A, 0);
+}
+
+/* RES 1,B */
+static void CB_op0x88(void)
+{
+	B = res_bit(B, 1);
+}
+
+/* RES 1,C */
+static void CB_op0x89(void)
+{
+	C = res_bit(C, 1);
+}
+
+/* RES 1,D */
+static void CB_op0x8A(void)
+{
+	D = res_bit(D, 1);
+}
+
+/* RES 1,E */
+static void CB_op0x8B(void)
+{
+	E = res_bit(E, 1);
+}
+
+/* RES 1,H */
+static void CB_op0x8C(void)
+{
+	H = res_bit(H, 1);
+}
+
+/* RES 1,L */
+static void CB_op0x8D(void)
+{
+	L = res_bit(L, 1);
+}
+
+/* RES 1,(HL) */
+static void CB_op0x8E(void)
+{
+	u16 address = (H << 8) + L;
+	u8 reg = read_memory(address);
+	reg = res_bit(reg, 1);
+	write_memory(address, reg);
+}
+
+/* RES 1,A */
+static void CB_op0x8F(void)
+{
+	A = res_bit(A, 1);
+}
+
+/* RES 2,B */
+static void CB_op0x90(void)
+{
+	B = res_bit(B, 2);
+}
+
+/* RES 2,C */
+static void CB_op0x91(void)
+{
+	C = res_bit(C, 2);
+}
+
+/* RES 2,D */
+static void CB_op0x92(void)
+{
+	D = res_bit(D, 2);
+}
+
+/* RES 2,E */
+static void CB_op0x93(void)
+{
+	E = res_bit(E, 2);
+}
+
+/* RES 2,H */
+static void CB_op0x94(void)
+{
+	H = res_bit(H, 2);
+}
+
+/* RES 2,L */
+static void CB_op0x95(void)
+{
+	L = res_bit(L, 2);
+}
+
+/* RES 2,(HL) */
+static void CB_op0x96(void)
+{
+	u16 address = (H << 8) + L;
+	u8 reg = read_memory(address);
+	reg = res_bit(reg, 2);
+	write_memory(address, reg);
+}
+
+/* RES 2,A */
+static void CB_op0x97(void)
+{
+	A = res_bit(A, 2);
+}
+
+/* RES 3,B */
+static void CB_op0x98(void)
+{
+	B = res_bit(B, 3);
+}
+
+/* */
+static void CB_op0x99(void)
+{
+}
+
+/* */
+static void CB_op0x9A(void)
+{
+}
+
+/* */
+static void CB_op0x9B(void)
+{
+}
+
+/* */
+static void CB_op0x9C(void)
+{
+}
+
+/* */
+static void CB_op0x9D(void)
+{
+}
+
+/* */
+static void CB_op0x9E(void)
+{
+}
+
+/* */
+static void CB_op0x9F(void)
+{
+}
+
+/* */
+static void CB_op0xA0(void)
+{
+}
+
+/* */
+static void CB_op0xA1(void)
+{
+}
+
+/* */
+static void CB_op0xA2(void)
+{
+}
+
+/* */
+static void CB_op0xA3(void)
+{
+}
+
+/* */
+static void CB_op0xA4(void)
+{
+}
+
+/* */
+static void CB_op0xA5(void)
+{
+}
+
+/* */
+static void CB_op0xA6(void)
+{
+}
+
+/* */
+static void CB_op0xA7(void)
+{
+}
+
+/* */
+static void CB_op0xA8(void)
+{
+}
+
+/* */
+static void CB_op0xA9(void)
+{
+}
+
+/* */
+static void CB_op0xAA(void)
+{
+}
+
+/* */
+static void CB_op0xAB(void)
+{
+}
+
+/* */
+static void CB_op0xAC(void)
+{
+}
+
+/* */
+static void CB_op0xAD(void)
+{
+}
+
+/* */
+static void CB_op0xAE(void)
+{
+}
+
+/* */
+static void CB_op0xAF(void)
+{
+}
+
+/* */
+static void CB_op0xB0(void)
+{
+}
+
+/* */
+static void CB_op0xB1(void)
+{
+}
+
+/* */
+static void CB_op0xB2(void)
+{
+}
+
+/* */
+static void CB_op0xB3(void)
+{
+}
+
+/* */
+static void CB_op0xB4(void)
+{
+}
+
+/* */
+static void CB_op0xB5(void)
+{
+}
+
+/* */
+static void CB_op0xB6(void)
+{
+}
+
+/* */
+static void CB_op0xB7(void)
+{
+}
+
+/* */
+static void CB_op0xB8(void)
+{
+}
+
+/* */
+static void CB_op0xB9(void)
+{
+}
+
+/* */
+static void CB_op0xBA(void)
+{
+}
+
+/* */
+static void CB_op0xBB(void)
+{
+}
+
+/* */
+static void CB_op0xBC(void)
+{
+}
+
+/* */
+static void CB_op0xBD(void)
+{
+}
+
+/* */
+static void CB_op0xBE(void)
+{
+}
+
+/* */
+static void CB_op0xBF(void)
+{
+}
+
+/* */
+static void CB_op0xC0(void)
+{
+}
+
+/* */
+static void CB_op0xC1(void)
+{
+}
+
+/* */
+static void CB_op0xC2(void)
+{
+}
+
+/* */
+static void CB_op0xC3(void)
+{
+}
+
+/* */
+static void CB_op0xC4(void)
+{
+}
+
+/* */
+static void CB_op0xC5(void)
+{
+}
+
+/* */
+static void CB_op0xC6(void)
+{
+}
+
+/* */
+static void CB_op0xC7(void)
+{
+}
+
+/* */
+static void CB_op0xC8(void)
+{
+}
+
+/* */
+static void CB_op0xC9(void)
+{
+}
+
+/* */
+static void CB_op0xCA(void)
+{
+}
+
+/* */
+static void CB_op0xCB(void)
+{
+}
+
+/* */
+static void CB_op0xCC(void)
+{
+}
+
+/* */
+static void CB_op0xCD(void)
+{
+}
+
+/* */
+static void CB_op0xCE(void)
+{
+}
+
+/* */
+static void CB_op0xCF(void)
+{
+}
+
+/* */
+static void CB_op0xD0(void)
+{
+}
+
+/* */
+static void CB_op0xD1(void)
+{
+}
+
+/* */
+static void CB_op0xD2(void)
+{
+}
+
+/* */
+static void CB_op0xD3(void)
+{
+}
+
+/* */
+static void CB_op0xD4(void)
+{
+}
+
+/* */
+static void CB_op0xD5(void)
+{
+}
+
+/* */
+static void CB_op0xD6(void)
+{
+}
+
+/* */
+static void CB_op0xD7(void)
+{
+}
+
+/* */
+static void CB_op0xD8(void)
+{
+}
+
+/* */
+static void CB_op0xD9(void)
+{
+}
+
+/* */
+static void CB_op0xDA(void)
+{
+}
+
+/* */
+static void CB_op0xDB(void)
+{
+}
+
+/* */
+static void CB_op0xDC(void)
+{
+}
+
+/* */
+static void CB_op0xDD(void)
+{
+}
+
+/* */
+static void CB_op0xDE(void)
+{
+}
+
+/* */
+static void CB_op0xDF(void)
+{
+}
+
+/* */
+static void CB_op0xE0(void)
+{
+}
+
+/* */
+static void CB_op0xE1(void)
+{
+}
+
+/* */
+static void CB_op0xE2(void)
+{
+}
+
+/* */
+static void CB_op0xE3(void)
+{
+}
+
+/* */
+static void CB_op0xE4(void)
+{
+}
+
+/* */
+static void CB_op0xE5(void)
+{
+}
+
+/* */
+static void CB_op0xE6(void)
+{
+}
+
+/* */
+static void CB_op0xE7(void)
+{
+}
+
+/* */
+static void CB_op0xE8(void)
+{
+}
+
+/* */
+static void CB_op0xE9(void)
+{
+}
+
+/* */
+static void CB_op0xEA(void)
+{
+}
+
+/* */
+static void CB_op0xEB(void)
+{
+}
+
+/* */
+static void CB_op0xEC(void)
+{
+}
+
+/* */
+static void CB_op0xED(void)
+{
+}
+
+/* */
+static void CB_op0xEE(void)
+{
+}
+
+/* */
+static void CB_op0xEF(void)
+{
+}
+
+/* */
+static void CB_op0xF0(void)
+{
+}
+
+/* */
+static void CB_op0xF1(void)
+{
+}
+
+/* */
+static void CB_op0xF2(void)
+{
+}
+
+/* */
+static void CB_op0xF3(void)
+{
+}
+
+/* */
+static void CB_op0xF4(void)
+{
+}
+
+/* */
+static void CB_op0xF5(void)
+{
+}
+
+/* */
+static void CB_op0xF6(void)
+{
+}
+
+/* */
+static void CB_op0xF7(void)
+{
+}
+
+/* */
+static void CB_op0xF8(void)
+{
+}
+
+/* */
+static void CB_op0xF9(void)
+{
+}
+
+/* */
+static void CB_op0xFA(void)
+{
+}
+
+/* */
+static void CB_op0xFB(void)
+{
+}
+
+/* */
+static void CB_op0xFC(void)
+{
+}
+
+/* */
+static void CB_op0xFD(void)
+{
+}
+
+/* */
+static void CB_op0xFE(void)
+{
+}
+
+/* */
+static void CB_op0xFF(void)
+{
 }
 
 static void init_optable(void)
@@ -2422,4 +4030,260 @@ static void init_optable(void)
 
 static void init_cb_optable(void)
 {
+	cb_optable[0x00] = CB_op0x00;
+	cb_optable[0x01] = CB_op0x01;
+	cb_optable[0x02] = CB_op0x02;
+	cb_optable[0x03] = CB_op0x03;
+	cb_optable[0x04] = CB_op0x04;
+	cb_optable[0x05] = CB_op0x05;
+	cb_optable[0x06] = CB_op0x06;
+	cb_optable[0x07] = CB_op0x07;
+	cb_optable[0x08] = CB_op0x08;
+	cb_optable[0x09] = CB_op0x09;
+	cb_optable[0x0A] = CB_op0x0A;
+	cb_optable[0x0B] = CB_op0x0B;
+	cb_optable[0x0C] = CB_op0x0C;
+	cb_optable[0x0D] = CB_op0x0D;
+	cb_optable[0x0E] = CB_op0x0E;
+	cb_optable[0x0F] = CB_op0x0F;
+	cb_optable[0x10] = CB_op0x10;
+	cb_optable[0x11] = CB_op0x11;
+	cb_optable[0x12] = CB_op0x12;
+	cb_optable[0x13] = CB_op0x13;
+	cb_optable[0x14] = CB_op0x14;
+	cb_optable[0x15] = CB_op0x15;
+	cb_optable[0x16] = CB_op0x16;
+	cb_optable[0x17] = CB_op0x17;
+	cb_optable[0x18] = CB_op0x18;
+	cb_optable[0x19] = CB_op0x19;
+	cb_optable[0x1A] = CB_op0x1A;
+	cb_optable[0x1B] = CB_op0x1B;
+	cb_optable[0x1C] = CB_op0x1C;
+	cb_optable[0x1D] = CB_op0x1D;
+	cb_optable[0x1E] = CB_op0x1E;
+	cb_optable[0x1F] = CB_op0x1F;
+	cb_optable[0x20] = CB_op0x20;
+	cb_optable[0x21] = CB_op0x21;
+	cb_optable[0x22] = CB_op0x22;
+	cb_optable[0x23] = CB_op0x23;
+	cb_optable[0x24] = CB_op0x24;
+	cb_optable[0x25] = CB_op0x25;
+	cb_optable[0x26] = CB_op0x26;
+	cb_optable[0x27] = CB_op0x27;
+	cb_optable[0x28] = CB_op0x28;
+	cb_optable[0x29] = CB_op0x29;
+	cb_optable[0x2A] = CB_op0x2A;
+	cb_optable[0x2B] = CB_op0x2B;
+	cb_optable[0x2C] = CB_op0x2C;
+	cb_optable[0x2D] = CB_op0x2D;
+	cb_optable[0x2E] = CB_op0x2E;
+	cb_optable[0x2F] = CB_op0x2F;
+	cb_optable[0x30] = CB_op0x30;
+	cb_optable[0x31] = CB_op0x31;
+	cb_optable[0x32] = CB_op0x32;
+	cb_optable[0x33] = CB_op0x33;
+	cb_optable[0x34] = CB_op0x34;
+	cb_optable[0x35] = CB_op0x35;
+	cb_optable[0x36] = CB_op0x36;
+	cb_optable[0x37] = CB_op0x37;
+	cb_optable[0x38] = CB_op0x38;
+	cb_optable[0x39] = CB_op0x39;
+	cb_optable[0x3A] = CB_op0x3A;
+	cb_optable[0x3B] = CB_op0x3B;
+	cb_optable[0x3C] = CB_op0x3C;
+	cb_optable[0x3D] = CB_op0x3D;
+	cb_optable[0x3E] = CB_op0x3E;
+	cb_optable[0x3F] = CB_op0x3F;
+	cb_optable[0x40] = CB_op0x40;
+	cb_optable[0x41] = CB_op0x41;
+	cb_optable[0x42] = CB_op0x42;
+	cb_optable[0x43] = CB_op0x43;
+	cb_optable[0x44] = CB_op0x44;
+	cb_optable[0x45] = CB_op0x45;
+	cb_optable[0x46] = CB_op0x46;
+	cb_optable[0x47] = CB_op0x47;
+	cb_optable[0x48] = CB_op0x48;
+	cb_optable[0x49] = CB_op0x49;
+	cb_optable[0x4A] = CB_op0x4A;
+	cb_optable[0x4B] = CB_op0x4B;
+	cb_optable[0x4C] = CB_op0x4C;
+	cb_optable[0x4D] = CB_op0x4D;
+	cb_optable[0x4E] = CB_op0x4E;
+	cb_optable[0x4F] = CB_op0x4F;
+	cb_optable[0x50] = CB_op0x50;
+	cb_optable[0x51] = CB_op0x51;
+	cb_optable[0x52] = CB_op0x52;
+	cb_optable[0x53] = CB_op0x53;
+	cb_optable[0x54] = CB_op0x54;
+	cb_optable[0x55] = CB_op0x55;
+	cb_optable[0x56] = CB_op0x56;
+	cb_optable[0x57] = CB_op0x57;
+	cb_optable[0x58] = CB_op0x58;
+	cb_optable[0x59] = CB_op0x59;
+	cb_optable[0x5A] = CB_op0x5A;
+	cb_optable[0x5B] = CB_op0x5B;
+	cb_optable[0x5C] = CB_op0x5C;
+	cb_optable[0x5D] = CB_op0x5D;
+	cb_optable[0x5E] = CB_op0x5E;
+	cb_optable[0x5F] = CB_op0x5F;
+	cb_optable[0x60] = CB_op0x60;
+	cb_optable[0x61] = CB_op0x61;
+	cb_optable[0x62] = CB_op0x62;
+	cb_optable[0x63] = CB_op0x63;
+	cb_optable[0x64] = CB_op0x64;
+	cb_optable[0x65] = CB_op0x65;
+	cb_optable[0x66] = CB_op0x66;
+	cb_optable[0x67] = CB_op0x67;
+	cb_optable[0x68] = CB_op0x68;
+	cb_optable[0x69] = CB_op0x69;
+	cb_optable[0x6A] = CB_op0x6A;
+	cb_optable[0x6B] = CB_op0x6B;
+	cb_optable[0x6C] = CB_op0x6C;
+	cb_optable[0x6D] = CB_op0x6D;
+	cb_optable[0x6E] = CB_op0x6E;
+	cb_optable[0x6F] = CB_op0x6F;
+	cb_optable[0x70] = CB_op0x70;
+	cb_optable[0x71] = CB_op0x71;
+	cb_optable[0x72] = CB_op0x72;
+	cb_optable[0x73] = CB_op0x73;
+	cb_optable[0x74] = CB_op0x74;
+	cb_optable[0x75] = CB_op0x75;
+	cb_optable[0x76] = CB_op0x76;
+	cb_optable[0x77] = CB_op0x77;
+	cb_optable[0x78] = CB_op0x78;
+	cb_optable[0x79] = CB_op0x79;
+	cb_optable[0x7A] = CB_op0x7A;
+	cb_optable[0x7B] = CB_op0x7B;
+	cb_optable[0x7C] = CB_op0x7C;
+	cb_optable[0x7D] = CB_op0x7D;
+	cb_optable[0x7E] = CB_op0x7E;
+	cb_optable[0x7F] = CB_op0x7F;
+	cb_optable[0x80] = CB_op0x80;
+	cb_optable[0x81] = CB_op0x81;
+	cb_optable[0x82] = CB_op0x82;
+	cb_optable[0x83] = CB_op0x83;
+	cb_optable[0x84] = CB_op0x84;
+	cb_optable[0x85] = CB_op0x85;
+	cb_optable[0x86] = CB_op0x86;
+	cb_optable[0x87] = CB_op0x87;
+	cb_optable[0x88] = CB_op0x88;
+	cb_optable[0x89] = CB_op0x89;
+	cb_optable[0x8A] = CB_op0x8A;
+	cb_optable[0x8B] = CB_op0x8B;
+	cb_optable[0x8C] = CB_op0x8C;
+	cb_optable[0x8D] = CB_op0x8D;
+	cb_optable[0x8E] = CB_op0x8E;
+	cb_optable[0x8F] = CB_op0x8F;
+	cb_optable[0x90] = CB_op0x90;
+	cb_optable[0x91] = CB_op0x91;
+	cb_optable[0x92] = CB_op0x92;
+	cb_optable[0x93] = CB_op0x93;
+	cb_optable[0x94] = CB_op0x94;
+	cb_optable[0x95] = CB_op0x95;
+	cb_optable[0x96] = CB_op0x96;
+	cb_optable[0x97] = CB_op0x97;
+	cb_optable[0x98] = CB_op0x98;
+	cb_optable[0x99] = CB_op0x99;
+	cb_optable[0x9A] = CB_op0x9A;
+	cb_optable[0x9B] = CB_op0x9B;
+	cb_optable[0x9C] = CB_op0x9C;
+	cb_optable[0x9D] = CB_op0x9D;
+	cb_optable[0x9E] = CB_op0x9E;
+	cb_optable[0x9F] = CB_op0x9F;
+	cb_optable[0xA0] = CB_op0xA0;
+	cb_optable[0xA1] = CB_op0xA1;
+	cb_optable[0xA2] = CB_op0xA2;
+	cb_optable[0xA3] = CB_op0xA3;
+	cb_optable[0xA4] = CB_op0xA4;
+	cb_optable[0xA5] = CB_op0xA5;
+	cb_optable[0xA6] = CB_op0xA6;
+	cb_optable[0xA7] = CB_op0xA7;
+	cb_optable[0xA8] = CB_op0xA8;
+	cb_optable[0xA9] = CB_op0xA9;
+	cb_optable[0xAA] = CB_op0xAA;
+	cb_optable[0xAB] = CB_op0xAB;
+	cb_optable[0xAC] = CB_op0xAC;
+	cb_optable[0xAD] = CB_op0xAD;
+	cb_optable[0xAE] = CB_op0xAE;
+	cb_optable[0xAF] = CB_op0xAF;
+	cb_optable[0xB0] = CB_op0xB0;
+	cb_optable[0xB1] = CB_op0xB1;
+	cb_optable[0xB2] = CB_op0xB2;
+	cb_optable[0xB3] = CB_op0xB3;
+	cb_optable[0xB4] = CB_op0xB4;
+	cb_optable[0xB5] = CB_op0xB5;
+	cb_optable[0xB6] = CB_op0xB6;
+	cb_optable[0xB7] = CB_op0xB7;
+	cb_optable[0xB8] = CB_op0xB8;
+	cb_optable[0xB9] = CB_op0xB9;
+	cb_optable[0xBA] = CB_op0xBA;
+	cb_optable[0xBB] = CB_op0xBB;
+	cb_optable[0xBC] = CB_op0xBC;
+	cb_optable[0xBD] = CB_op0xBD;
+	cb_optable[0xBE] = CB_op0xBE;
+	cb_optable[0xBF] = CB_op0xBF;
+	cb_optable[0xC0] = CB_op0xC0;
+	cb_optable[0xC1] = CB_op0xC1;
+	cb_optable[0xC2] = CB_op0xC2;
+	cb_optable[0xC3] = CB_op0xC3;
+	cb_optable[0xC4] = CB_op0xC4;
+	cb_optable[0xC5] = CB_op0xC5;
+	cb_optable[0xC6] = CB_op0xC6;
+	cb_optable[0xC7] = CB_op0xC7;
+	cb_optable[0xC8] = CB_op0xC8;
+	cb_optable[0xC9] = CB_op0xC9;
+	cb_optable[0xCA] = CB_op0xCA;
+	cb_optable[0xCB] = CB_op0xCB;
+	cb_optable[0xCC] = CB_op0xCC;
+	cb_optable[0xCD] = CB_op0xCD;
+	cb_optable[0xCE] = CB_op0xCE;
+	cb_optable[0xCF] = CB_op0xCF;
+	cb_optable[0xD0] = CB_op0xD0;
+	cb_optable[0xD1] = CB_op0xD1;
+	cb_optable[0xD2] = CB_op0xD2;
+	cb_optable[0xD3] = CB_op0xD3;
+	cb_optable[0xD4] = CB_op0xD4;
+	cb_optable[0xD5] = CB_op0xD5;
+	cb_optable[0xD6] = CB_op0xD6;
+	cb_optable[0xD7] = CB_op0xD7;
+	cb_optable[0xD8] = CB_op0xD8;
+	cb_optable[0xD9] = CB_op0xD9;
+	cb_optable[0xDA] = CB_op0xDA;
+	cb_optable[0xDB] = CB_op0xDB;
+	cb_optable[0xDC] = CB_op0xDC;
+	cb_optable[0xDD] = CB_op0xDD;
+	cb_optable[0xDE] = CB_op0xDE;
+	cb_optable[0xDF] = CB_op0xDF;
+	cb_optable[0xE0] = CB_op0xE0;
+	cb_optable[0xE1] = CB_op0xE1;
+	cb_optable[0xE2] = CB_op0xE2;
+	cb_optable[0xE3] = CB_op0xE3;
+	cb_optable[0xE4] = CB_op0xE4;
+	cb_optable[0xE5] = CB_op0xE5;
+	cb_optable[0xE6] = CB_op0xE6;
+	cb_optable[0xE7] = CB_op0xE7;
+	cb_optable[0xE8] = CB_op0xE8;
+	cb_optable[0xE9] = CB_op0xE9;
+	cb_optable[0xEA] = CB_op0xEA;
+	cb_optable[0xEB] = CB_op0xEB;
+	cb_optable[0xEC] = CB_op0xEC;
+	cb_optable[0xED] = CB_op0xED;
+	cb_optable[0xEE] = CB_op0xEE;
+	cb_optable[0xEF] = CB_op0xEF;
+	cb_optable[0xF0] = CB_op0xF0;
+	cb_optable[0xF1] = CB_op0xF1;
+	cb_optable[0xF2] = CB_op0xF2;
+	cb_optable[0xF3] = CB_op0xF3;
+	cb_optable[0xF4] = CB_op0xF4;
+	cb_optable[0xF5] = CB_op0xF5;
+	cb_optable[0xF6] = CB_op0xF6;
+	cb_optable[0xF7] = CB_op0xF7;
+	cb_optable[0xF8] = CB_op0xF8;
+	cb_optable[0xF9] = CB_op0xF9;
+	cb_optable[0xFA] = CB_op0xFA;
+	cb_optable[0xFB] = CB_op0xFB;
+	cb_optable[0xFC] = CB_op0xFC;
+	cb_optable[0xFD] = CB_op0xFD;
+	cb_optable[0xFE] = CB_op0xFE;
+	cb_optable[0xFF] = CB_op0xFF;
 }
