@@ -3,8 +3,7 @@ CFLAGS = -Wall -Wextra -std=c99 -pedantic -DDEBUG -g
 LDFLAGS = -Llib -lSDL2
 DEPDIR = .d
 BUILDDIR = obj
-DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
-POSTCOMPILE = mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
+DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.d
 
 SRC = $(wildcard *.c)
 HDR = $(wildcard *.h)
@@ -12,7 +11,6 @@ HDR = $(wildcard *.h)
 %.o: %.c
 $(BUILDDIR)/%.o: %.c $(DEPDIR)/%.d
 	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
-	$(POSTCOMPILE)
 
 $(DEPDIR)/%.d: ;
 .PRECIOUS: $(DEPDIR)/%.d
