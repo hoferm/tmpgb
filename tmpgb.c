@@ -2,6 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "SDL2/SDL.h"
+
+#include "gameboy.h"
+
 #include "cpu.h"
 #include "error.h"
 #include "memory.h"
@@ -9,10 +13,12 @@
 
 #define READ_SIZE 0x4000
 
+static char *logfile;
+static int oflag;
+
 static void usage(void)
 {
-	fprintf(stderr, "usage: tmpgb -d <file>\n");
-	exit(EXIT_FAILURE);
+	usagef("tmpgb -d <file>");
 }
 
 static void load_rom(const char *rom)
@@ -24,19 +30,16 @@ static void load_rom(const char *rom)
 
 	fp = fopen(rom, "rb");
 
-	if (fp == NULL) {
-		fprintf(stderr, "Could not open %s\n", rom);
-		exit(EXIT_FAILURE);
-	}
+	if (fp == NULL)
+		die_errno("could not open ROM: %s", rom);
 
 	while (!feof(fp)) {
 		nread = fread(buffer, 1, READ_SIZE, fp);
 
 		if (nread < READ_SIZE) {
 			if (ferror(fp)) {
-				fprintf(stderr, "Error reading %s\n", rom);
 				fclose(fp);
-				exit(EXIT_FAILURE);
+				die_errno("Error reading ROM: %s", rom);
 			}
 		}
 		read_rom(buffer, i);
@@ -58,12 +61,11 @@ static void run(void)
 
 	init_cpu();
 
-	if (init_sdl() != 0) {
-		fprintf(stderr, "Failed to create window\n");
-		exit(EXIT_FAILURE);
-	}
+	if (init_sdl() != 0)
+		die("Failed to create window");
 
 	while (!quit) {
+		draw_background();
 		quit = handle_event();
 		fetch_opcode();
 	}
@@ -77,13 +79,22 @@ static int handle_options(int argc, char **argv)
 		const char *cmd = argv[0];
 
 		if (cmd[0] != '-') {
-			ret = 1;
+			ret = -1;
 			break;
 		}
 
-		if (!strcmp(cmd, "-d")) {
+		if (!strcmp(cmd, "-o")) {
+			oflag = 1;
+			if (argc < 3) {
+				ret = -1;
+				break;
+			}
 
+			logfile = argv[1];
+			argv++;
+			argc--;
 		}
+
 		argv++;
 		argc--;
 	}
@@ -96,23 +107,30 @@ int main(int argc, char **argv)
 	char *rom;
 	int res = 0;
 
-	if (argc < 2) 
+	if (argc < 2)
 		usage();
 
-	if (argc > 2) {
+	if (argc > 3) {
 		argc--;
 		argv++;
 		res = handle_options(argc, argv);
+	} else if (!oflag) {
+		logfile = "log_out";
 	}
 
 	if (res != 0)
 		usage();
+
+	if (log_init(logfile) != 0) {
+		die_errno("Could not open file %s", logfile);
+	}
 
 	rom = argv[1];
 	load_rom(rom);
 
 	run();
 
+	log_close();
 	close_sdl();
 
 	return 0;

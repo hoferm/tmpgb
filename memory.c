@@ -73,15 +73,13 @@ static int check_complement(void)
 	int i;
 	int sum = 0;
 
-	for (i = 0x134; i < 0x14E; ++i) {
+	for (i = 0x134; i < 0x14E; ++i)
 		sum += memory.rom[i];
-	}
 
 	sum += 25;
 
-	if ((sum & 0xFF) != 0) {
+	if ((sum & 0xFF) != 0)
 		return 1;
-	}
 
 	return 0;
 }
@@ -98,17 +96,17 @@ void read_rom(const u8 *buffer, int count)
 
 static void change_mbc_mode(u8 value)
 {
-	u8 tmp = value & 0x01;
+	u8 mbc = value & 0x01;
 
-	if (memory.mbc_mode != tmp) {
-		if (tmp == 0) {
+	if (memory.mbc_mode != mbc) {
+		if (mbc == 0) {
 			memory.curr_ram = memory.ram_bank[0];
 		} else {
 			memory.selected_rom &= 0x1F;
 			memory.curr_rom = memory.rom_bank[memory.selected_rom];
 		}
 
-		memory.mbc_mode = tmp;
+		memory.mbc_mode = mbc;
 	}
 }
 
@@ -261,17 +259,11 @@ u8 *get_vram(void)
 
 int init_memory(void)
 {
-	int ret = 0;
+	if (cmp_nintendo_logo() != 0)
+		return VALIDATION_ERR;
 
-	if (cmp_nintendo_logo() != 0) {
-		ret = VALIDATION_ERR;
-		goto out;
-	}
-
-	if (check_complement() != 0) {
-		ret = VALIDATION_ERR;
-		goto out;
-	}
+	if (check_complement() != 0)
+		return VALIDATION_ERR;
 
 	write_memory(0xFF05, 0x00);
 	write_memory(0xFF06, 0x00);
@@ -311,6 +303,5 @@ int init_memory(void)
 	memory.curr_ram = memory.ram_bank[0];
 	memory.interrupt_enable = 0;
 
-out:
-	return ret;
+	return 0;
 }

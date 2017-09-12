@@ -2,19 +2,28 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
+FILE *fp;
+
+void log_close(void)
+{
+	fclose(fp);
+}
+
 void log_msg(const char *fmt, ...)
 {
-	FILE *fp;
 	va_list ap;
 
-	fp = fopen("log_out", "a");
-
-	if (fp == NULL) {
-		fprintf(stderr, "Could not open log file");
-		exit(EXIT_FAILURE);
-	}
 	va_start(ap, fmt);
 	vfprintf(fp, fmt, ap);
 	va_end(ap);
-	fclose(fp);
+}
+
+int log_init(const char *file)
+{
+	fp = fopen(file, "a");
+
+	if (fp == NULL)
+		return -1;
+
+	return 0;
 }

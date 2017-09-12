@@ -1,5 +1,7 @@
 #include <stdlib.h>
 
+#include <SDL2/SDL.h>
+
 #include "gameboy.h"
 
 #include "error.h"
@@ -18,15 +20,14 @@ struct sprite {
 };
 
 struct point {
-	int x;
-	int y;
+	SDL_Point points[64];
 	int color;
 };
 
 static u8 *vram;
 static u16 max_vram_range = 0x97FF;
 
-static u64 palette[4] = { 0xFFFFFF, 0xB2B2B2, 0x666666, 0x0 };
+static int palette[4] = { 0xFFFFFF, 0xB2B2B2, 0x666666, 0x0 };
 
 static u8 lcdc_register;
 
@@ -51,7 +52,7 @@ static void tile_data(u8 *tile, u8 tile_nr)
 		msb = vram[i+1];
 
 		for (j = 7; j >= 0; --j) {
-			color = ((lsb >> (j + 1)) & 0x1) + ((msb >> j) & 0x2);
+			color = ((lsb >> j) & 0x1) + (((msb >> j) & 0x1) << 1);
 
 			if (j == 0)
 				*(tile + offset + ((i / 2) * 8) + 7) = color;
@@ -81,7 +82,7 @@ static void draw_blank(void)
 
 }
 
-static void draw_scanline(struct point *pt)
+static void draw_scanline(SDL_Point *pt)
 {
 	int bg_palette[4] = { 0, 1, 2, 3 };
 	u8 scanline = read_memory(0xFF44);
@@ -100,9 +101,13 @@ static void draw_scanline(struct point *pt)
 	}
 }
 
-void line(struct point *pt)
+struct point line(SDL_Point *pt)
 {
+	struct point p;
+	p.color = 0;
 	draw_scanline(pt);
+
+	return p;
 }
 
 static void display_tiles(void)

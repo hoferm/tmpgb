@@ -20,9 +20,18 @@ typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned long u64;
 
+void usagef(const char *err, ...);
+void die_errno(const char *err, ...);
+void die(const char *err, ...);
+void error(const char *err, ...);
+
 #ifdef DEBUG
+void log_close(void);
 void log_msg(const char *fmt, ...);
+int log_init(const char *file);
 #else
+void log_close() {}
 void log_msg() {}
+void log_init() {}
 #endif
 #endif

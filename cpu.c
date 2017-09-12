@@ -49,6 +49,7 @@ void push_stack(u8 low, u8 high)
 	write_memory(SP, high);
 	SP--;
 	write_memory(SP, low);
+	log_msg("Stack: low: %d, high: %d\n", low, high);
 }
 
 u16 pop_stack(void)
@@ -94,8 +95,10 @@ void execute_opcode(u8 opcode)
 		push_stack(PC, PC >> 8);
 		PC = interrupt;
 	}
-	if (opcode > 0)
-		log_msg("%d: %s (%.2X): PC: %.4X, SP: %.4X\n", opcount, op_names[opcode], opcode, PC, SP);
+	if (opcode > 0) {
+		log_msg("%d: %s (%.2X): PC: %.4X, SP: %.4X\t", opcount, op_names[opcode], opcode, PC, SP);
+		log_msg("B: %.2X, C: %.2X, D: %.2X, E: %.2X, H: %.2X, L: %.2X, A: %.2X, F: %.2X\n", B, C, D, E, F, H, L, A, F);
+	}
 
 	optable[opcode]();
 
@@ -131,6 +134,8 @@ static u8 get_flag(u8 flag)
 
 static u8 inc_8bit(u8 reg)
 {
+	reset_flag(ZFLAG);
+
 	if ((reg & 0x0F) == 15)
 		set_flag(HFLAG);
 
@@ -144,6 +149,9 @@ static u8 inc_8bit(u8 reg)
 
 static u8 dec_8bit(u8 reg)
 {
+	reset_flag(HFLAG);
+	reset_flag(ZFLAG);
+
 	if ((reg & 0x0F) == 0)
 		set_flag(HFLAG);
 
@@ -159,8 +167,13 @@ static void add(u8 val, int with_carry)
 {
 	u16 res;
 
+	reset_flag(HFLAG);
+	reset_flag(ZFLAG);
+
 	if (with_carry)
 		val += get_flag(CFLAG);
+
+	reset_flag(CFLAG);
 
 	res = A + val;
 
@@ -181,6 +194,10 @@ static void add(u8 val, int with_carry)
 static void add_HL(u16 val)
 {
 	int tmp = H;
+
+	reset_flag(HFLAG);
+	reset_flag(CFLAG);
+
 	tmp <<= 8;
 	tmp += L + val;
 	if (tmp > 65535)
@@ -202,9 +219,13 @@ static void sub(u8 val, int with_carry)
 {
 	u8 res;
 
+	reset_flag(ZFLAG);
+	reset_flag(HFLAG);
+
 	if (with_carry)
 		val += get_flag(CFLAG);
 
+	reset_flag(CFLAG);
 	res = A - val;
 
 	if (res == 0)
@@ -221,6 +242,7 @@ static void sub(u8 val, int with_carry)
 
 static void and(u8 val)
 {
+	reset_flag(ZFLAG);
 	A &= val;
 
 	if (A == 0)
@@ -233,6 +255,7 @@ static void and(u8 val)
 
 static void xor(u8 val)
 {
+	reset_flag(ZFLAG);
 	A ^= val;
 
 	if (A == 0)
@@ -245,6 +268,7 @@ static void xor(u8 val)
 
 static void or(u8 val)
 {
+	reset_flag(ZFLAG);
 	A |= val;
 
 	if (A == 0)
@@ -258,6 +282,10 @@ static void or(u8 val)
 static void cmp(u8 val)
 {
 	u8 tmp = A - val;
+
+	reset_flag(ZFLAG);
+	reset_flag(HFLAG);
+	reset_flag(CFLAG);
 
 	if (tmp == 0)
 		set_flag(ZFLAG);
@@ -285,6 +313,9 @@ static u8 sla(u8 reg)
 {
 	u8 res;
 
+	reset_flag(ZFLAG);
+	reset_flag(CFLAG);
+
 	if (reg > 127)
 		set_flag(CFLAG);
 
@@ -305,11 +336,15 @@ static u8 srl(u8 reg)
 
 	if ((reg % 2) != 0)
 		set_flag(CFLAG);
+	else
+		reset_flag(CFLAG);
 
 	res = reg >> 1;
 
 	if (res == 0)
 		set_flag(ZFLAG);
+	else
+		reset_flag(ZFLAG);
 
 	reset_flag(NFLAG);
 	reset_flag(HFLAG);
@@ -320,7 +355,7 @@ static u8 srl(u8 reg)
 static u8 sra(u8 reg)
 {
 	u8 res = srl(reg);
-	u8 bit = res & (1U << 6);
+	u8 bit = (res >> 6) & 1;
 
 	res = (res & ~(1U << 7)) | (bit << 7);
 	return res;
@@ -333,6 +368,11 @@ static u8 rl(u8 reg)
 
 	res = (res & ~1) | cflag;
 
+	if (res == 0)
+		set_flag(ZFLAG);
+	else
+		reset_flag(ZFLAG);
+
 	return res;
 }
 
@@ -342,6 +382,11 @@ static u8 rr(u8 reg)
 	u8 cflag = get_flag(CFLAG);
 
 	res = (res & ~(1U << 7)) | (cflag << 7);
+
+	if (res == 0)
+		set_flag(ZFLAG);
+	else
+		reset_flag(ZFLAG);
 
 	return res;
 }
@@ -363,15 +408,24 @@ static u8 rrc(u8 reg)
 
 	res = (res & ~(1U << 7)) | cflag;
 
+	if (res == 0)
+		set_flag(ZFLAG);
+	else
+		reset_flag(ZFLAG);
+
 	return res;
 }
 
 static u8 swap(u8 reg)
 {
-	u8 res = (reg >> 4) + (reg << 4);
+	u8 res = 0;
 
-	if (res == 0)
-		set_flag(CFLAG);
+	reset_flag(ZFLAG);
+
+	if (reg == 0)
+		set_flag(ZFLAG);
+	else
+		res = (reg >> 4) + (reg << 4);
 
 	reset_flag(NFLAG);
 	reset_flag(HFLAG);
@@ -672,25 +726,32 @@ static void op0x1E(void)
 /* RRA */
 static void op0x1F(void)
 {
-	u8 tmp = get_flag(CFLAG);
-	if (A & 1)
-		set_flag(CFLAG);
-
-	A >>= 1;
-	A += tmp * 128;
-
-	if (A == 0)
-		set_flag(ZFLAG);
-
+	A = rr(A);
+	reset_flag(ZFLAG);
 	reset_flag(HFLAG);
 	reset_flag(NFLAG);
+	/* u8 tmp = get_flag(CFLAG); */
+	/* if (A & 1) */
+	/* 	set_flag(CFLAG); */
+
+	/* A >>= 1; */
+	/* A += tmp * 128; */
+
+	/* if (A == 0) */
+	/* 	set_flag(ZFLAG); */
+
+	/* reset_flag(HFLAG); */
+	/* reset_flag(NFLAG); */
 }
 
 /* JR NZ,n */
 static void op0x20(void)
 {
-	if (!get_flag(ZFLAG))
-		PC += fetch_8bit_data();
+	u8 tmp;
+	if (!get_flag(ZFLAG)) {
+		tmp = fetch_8bit_data();
+		PC += tmp;
+	}
 }
 
 /* LD HL,nn */
@@ -1655,7 +1716,7 @@ static void op0xAE(void)
 /* XOR A,A */
 static void op0xAF(void)
 {
-	A = 0;
+	xor(A);
 }
 
 /* OR A,B  */
