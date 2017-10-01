@@ -2,7 +2,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
-FILE *fp;
+static FILE *fp;
 
 void log_close(void)
 {
