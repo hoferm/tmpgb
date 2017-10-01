@@ -32,6 +32,6 @@ int log_init(const char *file);
 #else
 void log_close() {}
 void log_msg() {}
-void log_init() {}
+int log_init() {}
 #endif
 #endif

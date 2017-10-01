@@ -57,15 +57,3 @@ void error(const char *err, ...)
 	vreportf("error: ", err, params);
 	va_end(params);
 }
-
-void exit_error(void)
-{
-	switch(errnr) {
-	case VALIDATION_ERR:
-		fprintf(stderr, "Invalid ROM\n");
-		exit(VALIDATION_ERR);
-		break;
-	default:
-		fprintf(stderr, "Error with switch statement\n");
-	}
-}
