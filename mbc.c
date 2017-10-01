@@ -29,9 +29,5 @@ u8 select_ram_bank(u8 value)
 
 u8 enable_ram(u8 value)
 {
-	u8 ram_enable;
-
-	ram_enable = ((value & 0x0A) != 0x0A) ? 0 : 1;
-
-	return ram_enable;
+	return ((value & 0x0A) != 0x0A) ? 0 : 1;
 }
