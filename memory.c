@@ -9,7 +9,7 @@
 
 #define N_LOGO_OFFSET 0x104
 
-/* Starting adresses */
+/* Memory starting adresses */
 
 #define MEM_ROM 0x4000
 #define MEM_VRAM 0x8000
@@ -47,7 +47,7 @@ static struct {
 static int cmp_nintendo_logo(void)
 {
 	int i;
-	int ret = 0;
+	int ret = 1;
 
 	u8 nintendo_logo[48] = {
 		0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B,
@@ -60,7 +60,7 @@ static int cmp_nintendo_logo(void)
 
 	for (i = 0; i < 48; ++i) {
 		if (memory.rom[i + N_LOGO_OFFSET] != nintendo_logo[i]) {
-			ret = 1;
+			ret = 0;
 			break;
 		}
 	}
@@ -79,19 +79,18 @@ static int check_complement(void)
 	sum += 25;
 
 	if ((sum & 0xFF) != 0)
-		return 1;
+		return 0;
 
-	return 0;
+	return 1;
 }
 
 void read_rom(const u8 *buffer, int count)
 {
-	if (count != -1) {
+	if (count != -1)
 		memcpy(memory.rom_bank[count], buffer, 0x4000);
-	} else {
+	else
 		memcpy(memory.rom, buffer, 0x4000);
-		printf("0x38: %.2X, 0x39: %.2X\n", memory.rom[0x38], memory.rom[0x39]);
-	}
+
 }
 
 static void change_mbc_mode(u8 value)
@@ -141,8 +140,6 @@ void write_memory(u16 address, u8 value)
 		if (address >= 0x6000) {
 			change_mbc_mode(value);
 		}
-		offset = address - MEM_ROM;
-
 		break;
 	case 0x8:
 	case 0x9:
@@ -184,7 +181,7 @@ void write_memory(u16 address, u8 value)
 		break;
 	default:
 		/* Should never be reached */
-		fprintf(stderr, "Invalid address: %d", address);
+		fprintf(stderr, "Invalid address: %.2X", address);
 	}
 }
 
@@ -247,7 +244,7 @@ u8 read_memory(u16 address)
 		break;
 	default:
 		/* Should never be reached */
-		fprintf(stderr, "Invalid address");
+		fprintf(stderr, "Invalid address %.2X", address);
 	}
 	return ret;
 }
@@ -259,11 +256,11 @@ u8 *get_vram(void)
 
 int init_memory(void)
 {
-	if (cmp_nintendo_logo() != 0)
-		return VALIDATION_ERR;
+	if (!cmp_nintendo_logo())
+		return -1;
 
-	if (check_complement() != 0)
-		return VALIDATION_ERR;
+	if (!check_complement())
+		return -1;
 
 	write_memory(0xFF05, 0x00);
 	write_memory(0xFF06, 0x00);
