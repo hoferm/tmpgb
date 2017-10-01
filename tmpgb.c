@@ -18,7 +18,7 @@ static int oflag;
 
 static void usage(void)
 {
-	usagef("tmpgb -d <file>");
+	usagef("tmpgb [-o <file>] <file>");
 }
 
 static void load_rom(const char *rom)
@@ -35,11 +35,10 @@ static void load_rom(const char *rom)
 
 	while (!feof(fp)) {
 		nread = fread(buffer, 1, READ_SIZE, fp);
-
 		if (nread < READ_SIZE) {
 			if (ferror(fp)) {
 				fclose(fp);
-				die_errno("Error reading ROM: %s", rom);
+				die_errno("could not read ROM: %s", rom);
 			}
 		}
 		read_rom(buffer, i);
@@ -54,10 +53,8 @@ static void run(void)
 	int ret;
 	int quit = 0;
 
-	if ((ret = init_memory()) != 0) {
-		errnr = ret;
-		exit_error();
-	}
+	if ((ret = init_memory()) != 0)
+		die("invalid rom");
 
 	init_cpu();
 
@@ -71,32 +68,29 @@ static void run(void)
 	}
 }
 
-static int handle_options(int argc, char **argv)
+static int handle_options(int *argc, char ***argv)
 {
 	int ret = 0;
 
-	while (argc > 0) {
-		const char *cmd = argv[0];
+	while (*argc > 0) {
+		const char *cmd = (*argv)[0];
 
-		if (cmd[0] != '-') {
-			ret = -1;
+		if (cmd[0] != '-')
 			break;
-		}
 
 		if (!strcmp(cmd, "-o")) {
 			oflag = 1;
-			if (argc < 3) {
+			if (*argc < 3) {
 				ret = -1;
 				break;
 			}
 
-			logfile = argv[1];
-			argv++;
-			argc--;
+			logfile = (*argv)[1];
+			(*argv)++;
+			(*argc)--;
 		}
-
-		argv++;
-		argc--;
+		(*argv)++;
+		(*argc)--;
 	}
 
 	return ret;
@@ -110,22 +104,21 @@ int main(int argc, char **argv)
 	if (argc < 2)
 		usage();
 
-	if (argc > 3) {
-		argc--;
-		argv++;
-		res = handle_options(argc, argv);
-	} else if (!oflag) {
-		logfile = "log_out";
-	}
+	argc--;
+	argv++;
+	res = handle_options(&argc, &argv);
 
 	if (res != 0)
 		usage();
 
-	if (log_init(logfile) != 0) {
-		die_errno("Could not open file %s", logfile);
-	}
+	if (!oflag)
+		logfile = "log_out";
 
-	rom = argv[1];
+	rom = argv[0];
+
+	if (log_init(logfile) != 0)
+		die_errno("could not open file %s", logfile);
+
 	load_rom(rom);
 
 	run();
