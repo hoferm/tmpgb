@@ -74,7 +74,7 @@ static u8 fetch_8bit_data(void)
 {
 	u8 data;
 
-	data = read_memory(PC + 1);
+	data = read_memory(PC);
 	PC++;
 
 	log_msg("Byte value: %.2X\n", data);
@@ -87,7 +87,7 @@ static u16 fetch_16bit_data(void)
 {
 	u16 data;
 
-	data = read_memory(PC + 1) + (read_memory(PC + 2) << 8);
+	data = read_memory(PC) + (read_memory(PC + 1) << 8);
 	PC = PC + 2;
 
 	log_msg("2 Byte value: %.4X\n", data);
@@ -120,9 +120,9 @@ void fetch_opcode(void)
 	u8 opcode;
 
 	opcode = read_memory(PC);
+	PC++;
 
 	execute_opcode(opcode);
-	PC++;
 }
 
 static void set_flag(u8 flag)
@@ -687,9 +687,9 @@ static void op0x17(void)
 /* JR n */
 static void op0x18(void)
 {
-	u16 tmp = PC;
-	tmp += fetch_8bit_data();
-	PC = tmp;
+	char tmp;
+	tmp = (char) fetch_8bit_data();
+	PC += tmp;
 }
 
 /* ADD HL,DE */
@@ -743,27 +743,15 @@ static void op0x1F(void)
 	reset_flag(ZFLAG);
 	reset_flag(HFLAG);
 	reset_flag(NFLAG);
-	/* u8 tmp = get_flag(CFLAG); */
-	/* if (A & 1) */
-	/* 	set_flag(CFLAG); */
-
-	/* A >>= 1; */
-	/* A += tmp * 128; */
-
-	/* if (A == 0) */
-	/* 	set_flag(ZFLAG); */
-
-	/* reset_flag(HFLAG); */
-	/* reset_flag(NFLAG); */
 }
 
 /* JR NZ,n */
 static void op0x20(void)
 {
-	u16 tmp = PC;
+	char tmp;
 	if (!get_flag(ZFLAG)) {
-		tmp += fetch_8bit_data();
-		PC = tmp;
+		tmp = (char) fetch_8bit_data();
+		PC += tmp;
 	} else {
 		PC++;
 	}
@@ -825,10 +813,10 @@ static void op0x27(void)
 /* JR Z,n */
 static void op0x28(void)
 {
-	u16 tmp = PC;
+	char tmp;
 	if (get_flag(ZFLAG)) {
-		tmp += fetch_8bit_data();
-		PC = tmp;
+		tmp = (char) fetch_8bit_data();
+		PC += tmp;
 	} else {
 		PC++;
 	}
@@ -890,10 +878,10 @@ static void op0x2F(void)
 /* JR NC,n */
 static void op0x30(void)
 {
-	u16 tmp = PC;
+	char tmp;
 	if (!get_flag(CFLAG)) {
-		tmp += fetch_8bit_data();
-		PC = tmp;
+		tmp = (char) fetch_8bit_data();
+		PC += tmp;
 	} else {
 		PC++;
 	}
@@ -965,10 +953,10 @@ static void op0x37(void)
 /* JR C,n */
 static void op0x38(void)
 {
-	u16 tmp = PC;
+	char tmp;
 	if (get_flag(CFLAG)) {
-		tmp += fetch_8bit_data();
-		PC = tmp;
+		tmp = (char) fetch_8bit_data();
+		PC += tmp;
 	} else {
 		PC++;
 	}
