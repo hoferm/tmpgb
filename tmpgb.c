@@ -2,8 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "SDL2/SDL.h"
-
 #include "gameboy.h"
 
 #include "cpu.h"
