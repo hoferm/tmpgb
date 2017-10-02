@@ -12,8 +12,8 @@
 static void init_optable(void);
 static void init_cb_optable(void);
 
-void (*optable[256])(void);
-void (*cb_optable[256])(void);
+static void (*optable[256])(void);
+static void (*cb_optable[256])(void);
 
 static u8 B;
 static u8 C;
@@ -29,11 +29,12 @@ static u16 SP;
 
 static u64 opcount = 0;
 
-static int clock_count = 0;
+static u64 clock_count = 0;
 
 static int disable_interrupt = 0;
+static int stopped = 0;
 
-void tick(void)
+static void tick(void)
 {
 	clock_count += 4;
 }
@@ -43,16 +44,21 @@ int cpu_cycle(void)
 	return clock_count;
 }
 
-void push_stack(u8 low, u8 high)
+void reset_clock_count(void)
+{
+	clock_count = 0;
+}
+
+static void push_stack(u8 low, u8 high)
 {
 	SP--;
 	write_memory(SP, high);
 	SP--;
 	write_memory(SP, low);
-	log_msg("Stack: low: %d, high: %d\n", low, high);
+	log_msg("Stack: high: %.2X, low: %.2X\n", high, low);
 }
 
-u16 pop_stack(void)
+static u16 pop_stack(void)
 {
 	u16 value;
 	value = read_memory(SP);
@@ -64,47 +70,49 @@ u16 pop_stack(void)
 	return value;
 }
 
-u8 fetch_8bit_data(void)
+static u8 fetch_8bit_data(void)
 {
 	u8 data;
 
-	data = read_memory(PC);
+	data = read_memory(PC + 1);
 	PC++;
 
 	log_msg("Byte value: %.2X\n", data);
+	tick();
 
 	return data;
 }
 
-u16 fetch_16bit_data(void)
+static u16 fetch_16bit_data(void)
 {
 	u16 data;
 
-	data = read_memory(PC) + (read_memory(PC + 1) << 8);
+	data = read_memory(PC + 1) + (read_memory(PC + 2) << 8);
 	PC = PC + 2;
 
 	log_msg("2 Byte value: %.4X\n", data);
+	tick();
+	tick();
 
 	return data;
 }
 
-void execute_opcode(u8 opcode)
+static void execute_opcode(u8 opcode)
 {
 	int interrupt = execute_interrupt();
 	if (interrupt) {
 		push_stack(PC, PC >> 8);
 		PC = interrupt;
 	}
-	if (opcode > 0) {
-		log_msg("%d: %s (%.2X): PC: %.4X, SP: %.4X\t", opcount, op_names[opcode], opcode, PC, SP);
-		log_msg("B: %.2X, C: %.2X, D: %.2X, E: %.2X, H: %.2X, L: %.2X, A: %.2X, F: %.2X\n", B, C, D, E, F, H, L, A, F);
-	}
+	log_msg("%d: %s (%.2X): PC: %.4X, SP: %.4X\t", opcount, op_names[opcode], opcode, PC, SP);
+	log_msg("B: %.2X, C: %.2X, D: %.2X, E: %.2X, H: %.2X, L: %.2X, A: %.2X, F: %.2X\n", B, C, D, E, H, L, A, F);
 
 	optable[opcode]();
 
 	if (disable_interrupt)
 		set_ime(0);
 	opcount++;
+	tick();
 }
 
 void fetch_opcode(void)
@@ -112,9 +120,9 @@ void fetch_opcode(void)
 	u8 opcode;
 
 	opcode = read_memory(PC);
-	PC++;
 
 	execute_opcode(opcode);
+	PC++;
 }
 
 static void set_flag(u8 flag)
@@ -135,6 +143,8 @@ static u8 get_flag(u8 flag)
 static u8 inc_8bit(u8 reg)
 {
 	reset_flag(ZFLAG);
+	reset_flag(HFLAG);
+	reset_flag(NFLAG);
 
 	if ((reg & 0x0F) == 15)
 		set_flag(HFLAG);
@@ -143,7 +153,6 @@ static u8 inc_8bit(u8 reg)
 	if (reg == 0)
 		set_flag(ZFLAG);
 
-	reset_flag(NFLAG);
 	return reg;
 }
 
@@ -151,6 +160,7 @@ static u8 dec_8bit(u8 reg)
 {
 	reset_flag(HFLAG);
 	reset_flag(ZFLAG);
+	reset_flag(NFLAG);
 
 	if ((reg & 0x0F) == 0)
 		set_flag(HFLAG);
@@ -165,19 +175,19 @@ static u8 dec_8bit(u8 reg)
 
 static void add(u8 val, int with_carry)
 {
-	u16 res;
+	u16 res = val;
 
 	reset_flag(HFLAG);
 	reset_flag(ZFLAG);
 
 	if (with_carry)
-		val += get_flag(CFLAG);
+		res += get_flag(CFLAG);
 
 	reset_flag(CFLAG);
 
-	res = A + val;
+	res += A;
 
-	if (res == 0)
+	if ((res & 0xFF) == 0)
 		set_flag(ZFLAG);
 
 	reset_flag(NFLAG);
@@ -233,11 +243,13 @@ static void sub(u8 val, int with_carry)
 
 	set_flag(NFLAG);
 
-	if ((A & 0xF) >= (val & 0xF))
+	if ((A & 0xF) < (val & 0xF))
 		set_flag(HFLAG);
 
-	if (A >= val)
+	if (A < val)
 		set_flag(CFLAG);
+
+	A = res;
 }
 
 static void and(u8 val)
@@ -281,13 +293,11 @@ static void or(u8 val)
 
 static void cmp(u8 val)
 {
-	u8 tmp = A - val;
-
 	reset_flag(ZFLAG);
 	reset_flag(HFLAG);
 	reset_flag(CFLAG);
 
-	if (tmp == 0)
+	if (A == val)
 		set_flag(ZFLAG);
 
 	set_flag(NFLAG);
@@ -447,12 +457,12 @@ static void check_bit(u8 reg, u8 bit)
 
 static u8 res_bit(u8 reg, u8 bit)
 {
-	return reg & (~(1 << bit));
+	return reg & (~(1U << bit));
 }
 
 static u8 set_bit(u8 reg, u8 bit)
 {
-	return reg | (1 << bit);
+	return reg | (1U << bit);
 }
 
 void init_cpu(void)
@@ -525,6 +535,7 @@ static void op0x06(void)
 /* RLCA */
 static void op0x07(void)
 {
+	reset_flag(CFLAG);
 	if (A > 127)
 		set_flag(CFLAG);
 
@@ -610,7 +621,7 @@ static void op0x0F(void)
 /* STOP */
 static void op0x10(void)
 {
-
+	stopped = 1;
 }
 
 /* LD DE,nn */
@@ -676,7 +687,9 @@ static void op0x17(void)
 /* JR n */
 static void op0x18(void)
 {
-	PC += fetch_8bit_data();
+	u16 tmp = PC;
+	tmp += fetch_8bit_data();
+	PC = tmp;
 }
 
 /* ADD HL,DE */
@@ -747,10 +760,12 @@ static void op0x1F(void)
 /* JR NZ,n */
 static void op0x20(void)
 {
-	u8 tmp;
+	u16 tmp = PC;
 	if (!get_flag(ZFLAG)) {
-		tmp = fetch_8bit_data();
-		PC += tmp;
+		tmp += fetch_8bit_data();
+		PC = tmp;
+	} else {
+		PC++;
 	}
 }
 
@@ -810,8 +825,13 @@ static void op0x27(void)
 /* JR Z,n */
 static void op0x28(void)
 {
-	if (get_flag(ZFLAG))
-		PC += fetch_8bit_data();
+	u16 tmp = PC;
+	if (get_flag(ZFLAG)) {
+		tmp += fetch_8bit_data();
+		PC = tmp;
+	} else {
+		PC++;
+	}
 }
 
 /* ADD HL,HL */
@@ -870,8 +890,13 @@ static void op0x2F(void)
 /* JR NC,n */
 static void op0x30(void)
 {
-	if (!get_flag(CFLAG))
-		PC += fetch_8bit_data();
+	u16 tmp = PC;
+	if (!get_flag(CFLAG)) {
+		tmp += fetch_8bit_data();
+		PC = tmp;
+	} else {
+		PC++;
+	}
 }
 
 /* LD SP,nn */
@@ -940,8 +965,13 @@ static void op0x37(void)
 /* JR C,n */
 static void op0x38(void)
 {
-	if (get_flag(CFLAG))
-		PC += fetch_8bit_data();
+	u16 tmp = PC;
+	if (get_flag(CFLAG)) {
+		tmp += fetch_8bit_data();
+		PC = tmp;
+	} else {
+		PC++;
+	}
 }
 
 /* ADD HL,SP */
@@ -2275,7 +2305,7 @@ static void op0xF7(void)
 /* LD HL,SP+n */
 static void op0xF8(void)
 {
-	char value = fetch_8bit_data();
+	u8 value = fetch_8bit_data();
 	int result;
 	result = SP + value;
 	if (result > 0xFFFF)
