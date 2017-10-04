@@ -126,6 +126,7 @@ void fetch_opcode(void)
 {
 	u8 opcode;
 
+	old_clock_count = clock_count;
 	opcode = read_memory(PC);
 	PC++;
 
