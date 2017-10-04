@@ -9,13 +9,19 @@ static u8 *tma;
 static u8 *tac;
 
 static int cpu_clock;
+static int tima_count;
+static int div_count;
 
 void update_timer(void)
 {
-	u64 cycles = cpu_cycle();
+	int inc = cpu_cycle() - old_cpu_cycle();
+	div_count += inc;
+	tima_count += inc;
 
-	if (cycles % 256 == 0)
+	if (div_count >= 256) {
 		(*div)++;
+		div_count = 0;
+	}
 
 	switch (*tac & 0x3) {
 	case 0:
@@ -32,11 +38,13 @@ void update_timer(void)
 		break;
 	}
 
-	if ((BIT_2(*tac)) && (cycles % cpu_clock == 0)) {
+	if ((BIT_2(*tac)) && (tima_count >= cpu_clock)) {
 		if (*tima == 0xFF)
 			*tima = *tma;
 		else
 			(*tima)++;
+
+		tima_count = 0;
 	}
 }
 
