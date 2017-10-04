@@ -6,7 +6,6 @@
 
 static SDL_Window *window;
 static SDL_Renderer *renderer;
-/* static SDL_Texture *texture; */
 
 static void clear(void)
 {
@@ -17,7 +16,6 @@ static void clear(void)
 int init_sdl(void)
 {
 	int ret = 0;
-	/* SDL_Surface *surface; */
 
 	if (SDL_Init(SDL_INIT_VIDEO) < 0) {
 		ret = -1;
@@ -29,19 +27,6 @@ int init_sdl(void)
 		goto out;
 	}
 
-	/* surface = SDL_GetWindowSurface(window); */
-	/* if (surface == NULL) { */
-	/* 	ret = -1; */
-	/* 	goto out; */
-	/* } */
-
-	/* texture = SDL_CreateTextureFromSurface(renderer, surface); */
-	/* if (texture == NULL) { */
-	/* 	ret = -1; */
-	/* 	goto out; */
-	/* } */
-
-	/* SDL_FreeSurface(surface); */
 out:
 	if (ret == -1) {
 		errnr = SDL_ERR;
@@ -54,6 +39,7 @@ void update_screen(void)
 {
 }
 
+/* Disable display */
 void draw_background(void)
 {
 	clear();
@@ -62,9 +48,6 @@ void draw_background(void)
 
 void close_sdl(void)
 {
-	/* SDL_DestroyTexture(texture); */
-	/* texture = NULL; */
-
 	SDL_DestroyRenderer(renderer);
 	renderer = NULL;
 
