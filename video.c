@@ -49,7 +49,7 @@ static void tile_data(u8 *tile, u8 tile_nr)
 
 	for (i = start; i < end; i += 2) {
 		lsb = vram[i];
-		msb = vram[i+1];
+		msb = vram[i + 1];
 
 		for (j = 7; j >= 0; --j) {
 			color = ((lsb >> j) & 0x1) + (((msb >> j) & 0x1) << 1);
