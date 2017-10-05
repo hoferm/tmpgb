@@ -11,3 +11,5 @@ void set_ime(int enabled);
 int get_ime(void);
 
 int execute_interrupt(void);
+
+void request_interrupt(int);

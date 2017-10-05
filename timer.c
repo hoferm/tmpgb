@@ -1,6 +1,7 @@
 #include "gameboy.h"
 
 #include "cpu.h"
+#include "interrupt.h"
 #include "memory.h"
 
 static u8 *div;
@@ -39,10 +40,12 @@ void update_timer(void)
 	}
 
 	if ((BIT_2(*tac)) && (tima_count >= cpu_clock)) {
-		if (*tima == 0xFF)
+		if (*tima == 0xFF) {
 			*tima = *tma;
-		else
+			request_interrupt(INT_TIMER);
+		} else {
 			(*tima)++;
+		}
 
 		tima_count = 0;
 	}

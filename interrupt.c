@@ -17,8 +17,8 @@ int get_ime(void)
 
 int execute_interrupt(void)
 {
-	int interrupt_enable;
-	int interrupt_request;
+	u8 interrupt_enable;
+	u8 interrupt_request;
 	int interrupt = 0;
 	int tmp;
 
@@ -27,7 +27,7 @@ int execute_interrupt(void)
 		interrupt_request = read_memory(0xFF0F);
 		tmp = interrupt_enable & interrupt_request;
 
-		if (!tmp) 
+		if (!tmp)
 			return interrupt;
 
 		if (BIT_0(tmp)) {
@@ -52,4 +52,26 @@ int execute_interrupt(void)
 	}
 
 	return interrupt;
+}
+
+void request_interrupt(int interrupt)
+{
+	u8 interrupt_request = read_memory(0xFF0F);
+	switch (interrupt) {
+	case INT_VBLANK:
+		write_memory(0xFF0F, interrupt_request | 0x1);
+		break;
+	case INT_LCD:
+		write_memory(0xFF0F, interrupt_request | 0x2);
+		break;
+	case INT_TIMER:
+		write_memory(0xFF0F, interrupt_request | 0x4);
+		break;
+	case INT_SERIAL:
+		write_memory(0xFF0F, interrupt_request | 0x8);
+		break;
+	case INT_JOYPAD:
+		write_memory(0xFF0F, interrupt_request | 0x10);
+		break;
+	}
 }
