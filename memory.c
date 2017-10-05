@@ -226,7 +226,7 @@ u8 read_memory(u16 address)
 	case 0xE:
 	case 0xF:
 		if (address <= 0xFDFF) {
-			offset = address - 0xC000;
+			offset = address - MEM_WRAM - 0x2000;
 			ret = memory.wram[offset];
 		} else if (address <= 0xFE9F) {
 			offset = address - MEM_SPRITE_TABLE;
