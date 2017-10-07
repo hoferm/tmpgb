@@ -7,7 +7,7 @@
 #include "cpu.h"
 #include "error.h"
 #include "memory.h"
-#include "sdl.h"
+#include "gui.h"
 
 #define READ_SIZE 0x4000
 
