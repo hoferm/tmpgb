@@ -30,20 +30,20 @@ int execute_interrupt(void)
 		if (!tmp)
 			return interrupt;
 
-		if (BIT_0(tmp)) {
-			interrupt_request = RESET_BIT_0(interrupt_request);
+		if (get_bit(tmp, 0)) {
+			interrupt_request = reset_bit(interrupt_request, 0);
 			interrupt = INT_VBLANK;
-		} else if (BIT_1(tmp)) {
-			interrupt_request = RESET_BIT_1(interrupt_request);
+		} else if (get_bit(tmp, 1)) {
+			interrupt_request = reset_bit(interrupt_request, 1);
 			interrupt = INT_LCD;
-		} else if (BIT_2(tmp)) {
-			interrupt_request = RESET_BIT_2(interrupt_request);
+		} else if (get_bit(tmp, 2)) {
+			interrupt_request = reset_bit(interrupt_request, 2);
 			interrupt = INT_TIMER;
-		} else if (BIT_3(tmp)) {
-			interrupt_request = RESET_BIT_3(interrupt_request);
+		} else if (get_bit(tmp, 3)) {
+			interrupt_request = reset_bit(interrupt_request, 3);
 			interrupt = INT_SERIAL;
-		} else if (BIT_4(tmp)) {
-			interrupt_request = RESET_BIT_4(interrupt_request);
+		} else if (get_bit(tmp, 4)) {
+			interrupt_request = reset_bit(interrupt_request, 4);
 			interrupt = INT_JOYPAD;
 		}
 
@@ -59,19 +59,19 @@ void request_interrupt(int interrupt)
 	u8 interrupt_request = read_memory(0xFF0F);
 	switch (interrupt) {
 	case INT_VBLANK:
-		write_memory(0xFF0F, interrupt_request | 0x1);
+		write_memory(0xFF0F, set_bit(interrupt_request, 0));
 		break;
 	case INT_LCD:
-		write_memory(0xFF0F, interrupt_request | 0x2);
+		write_memory(0xFF0F, set_bit(interrupt_request, 1));
 		break;
 	case INT_TIMER:
-		write_memory(0xFF0F, interrupt_request | 0x4);
+		write_memory(0xFF0F, set_bit(interrupt_request, 2));
 		break;
 	case INT_SERIAL:
-		write_memory(0xFF0F, interrupt_request | 0x8);
+		write_memory(0xFF0F, set_bit(interrupt_request, 3));
 		break;
 	case INT_JOYPAD:
-		write_memory(0xFF0F, interrupt_request | 0x10);
+		write_memory(0xFF0F, set_bit(interrupt_request, 4));
 		break;
 	}
 }

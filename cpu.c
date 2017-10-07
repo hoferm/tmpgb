@@ -3179,37 +3179,37 @@ static void CB_op0x7F(void)
 /* RES 0,B */
 static void CB_op0x80(void)
 {
-	B = res_bit(B, 0);
+	B = reset_bit(B, 0);
 }
 
 /* RES 0,C */
 static void CB_op0x81(void)
 {
-	C = res_bit(C, 0);
+	C = reset_bit(C, 0);
 }
 
 /* RES 0,D */
 static void CB_op0x82(void)
 {
-	D = res_bit(D, 0);
+	D = reset_bit(D, 0);
 }
 
 /* RES 0,E */
 static void CB_op0x83(void)
 {
-	E = res_bit(E, 0);
+	E = reset_bit(E, 0);
 }
 
 /* RES 0,H */
 static void CB_op0x84(void)
 {
-	H = res_bit(H, 0);
+	H = reset_bit(H, 0);
 }
 
 /* RES 0,L */
 static void CB_op0x85(void)
 {
-	L = res_bit(L, 0);
+	L = reset_bit(L, 0);
 }
 
 /* RES 0,(HL) */
@@ -3217,50 +3217,50 @@ static void CB_op0x86(void)
 {
 	u16 address = (H << 8) + L;
 	u8 reg = read_memory(address);
-	reg = res_bit(reg, 0);
+	reg = reset_bit(reg, 0);
 	write_memory(address, reg);
 }
 
 /* RES 0,A */
 static void CB_op0x87(void)
 {
-	A = res_bit(A, 0);
+	A = reset_bit(A, 0);
 }
 
 /* RES 1,B */
 static void CB_op0x88(void)
 {
-	B = res_bit(B, 1);
+	B = reset_bit(B, 1);
 }
 
 /* RES 1,C */
 static void CB_op0x89(void)
 {
-	C = res_bit(C, 1);
+	C = reset_bit(C, 1);
 }
 
 /* RES 1,D */
 static void CB_op0x8A(void)
 {
-	D = res_bit(D, 1);
+	D = reset_bit(D, 1);
 }
 
 /* RES 1,E */
 static void CB_op0x8B(void)
 {
-	E = res_bit(E, 1);
+	E = reset_bit(E, 1);
 }
 
 /* RES 1,H */
 static void CB_op0x8C(void)
 {
-	H = res_bit(H, 1);
+	H = reset_bit(H, 1);
 }
 
 /* RES 1,L */
 static void CB_op0x8D(void)
 {
-	L = res_bit(L, 1);
+	L = reset_bit(L, 1);
 }
 
 /* RES 1,(HL) */
@@ -3268,50 +3268,50 @@ static void CB_op0x8E(void)
 {
 	u16 address = (H << 8) + L;
 	u8 reg = read_memory(address);
-	reg = res_bit(reg, 1);
+	reg = reset_bit(reg, 1);
 	write_memory(address, reg);
 }
 
 /* RES 1,A */
 static void CB_op0x8F(void)
 {
-	A = res_bit(A, 1);
+	A = reset_bit(A, 1);
 }
 
 /* RES 2,B */
 static void CB_op0x90(void)
 {
-	B = res_bit(B, 2);
+	B = reset_bit(B, 2);
 }
 
 /* RES 2,C */
 static void CB_op0x91(void)
 {
-	C = res_bit(C, 2);
+	C = reset_bit(C, 2);
 }
 
 /* RES 2,D */
 static void CB_op0x92(void)
 {
-	D = res_bit(D, 2);
+	D = reset_bit(D, 2);
 }
 
 /* RES 2,E */
 static void CB_op0x93(void)
 {
-	E = res_bit(E, 2);
+	E = reset_bit(E, 2);
 }
 
 /* RES 2,H */
 static void CB_op0x94(void)
 {
-	H = res_bit(H, 2);
+	H = reset_bit(H, 2);
 }
 
 /* RES 2,L */
 static void CB_op0x95(void)
 {
-	L = res_bit(L, 2);
+	L = reset_bit(L, 2);
 }
 
 /* RES 2,(HL) */
@@ -3319,50 +3319,50 @@ static void CB_op0x96(void)
 {
 	u16 address = (H << 8) + L;
 	u8 reg = read_memory(address);
-	reg = res_bit(reg, 2);
+	reg = reset_bit(reg, 2);
 	write_memory(address, reg);
 }
 
 /* RES 2,A */
 static void CB_op0x97(void)
 {
-	A = res_bit(A, 2);
+	A = reset_bit(A, 2);
 }
 
 /* RES 3,B */
 static void CB_op0x98(void)
 {
-	B = res_bit(B, 3);
+	B = reset_bit(B, 3);
 }
 
 /* RES 3,C */
 static void CB_op0x99(void)
 {
-	C = res_bit(C, 3);
+	C = reset_bit(C, 3);
 }
 
 /* RES 3,D */
 static void CB_op0x9A(void)
 {
-	D = res_bit(D, 3);
+	D = reset_bit(D, 3);
 }
 
 /* RES 3,E */
 static void CB_op0x9B(void)
 {
-	E = res_bit(E, 3);
+	E = reset_bit(E, 3);
 }
 
 /* RES 3,H */
 static void CB_op0x9C(void)
 {
-	H = res_bit(H, 3);
+	H = reset_bit(H, 3);
 }
 
 /* RES 3,L */
 static void CB_op0x9D(void)
 {
-	L = res_bit(L, 3);
+	L = reset_bit(L, 3);
 }
 
 /* RES 3,(HL) */
@@ -3370,50 +3370,50 @@ static void CB_op0x9E(void)
 {
 	u16 address = (H << 8) + L;
 	u8 reg = read_memory(address);
-	reg = res_bit(reg, 3);
+	reg = reset_bit(reg, 3);
 	write_memory(address, reg);
 }
 
 /* RES 3,A */
 static void CB_op0x9F(void)
 {
-	A = res_bit(A, 3);
+	A = reset_bit(A, 3);
 }
 
 /* RES 4,B */
 static void CB_op0xA0(void)
 {
-	B = res_bit(B, 4);
+	B = reset_bit(B, 4);
 }
 
 /* RES 4,C */
 static void CB_op0xA1(void)
 {
-	C = res_bit(C, 4);
+	C = reset_bit(C, 4);
 }
 
 /* RES 4,D */
 static void CB_op0xA2(void)
 {
-	D = res_bit(D, 4);
+	D = reset_bit(D, 4);
 }
 
 /* RES 4,E */
 static void CB_op0xA3(void)
 {
-	E = res_bit(E, 4);
+	E = reset_bit(E, 4);
 }
 
 /* RES 4,H */
 static void CB_op0xA4(void)
 {
-	H = res_bit(H, 4);
+	H = reset_bit(H, 4);
 }
 
 /* RES 4,L */
 static void CB_op0xA5(void)
 {
-	L = res_bit(L, 4);
+	L = reset_bit(L, 4);
 }
 
 /* RES 4,(HL) */
@@ -3421,50 +3421,50 @@ static void CB_op0xA6(void)
 {
 	u16 address = (H << 8) + L;
 	u8 reg = read_memory(address);
-	reg = res_bit(reg, 4);
+	reg = reset_bit(reg, 4);
 	write_memory(address, reg);
 }
 
 /* RES 4,A */
 static void CB_op0xA7(void)
 {
-	A = res_bit(A, 4);
+	A = reset_bit(A, 4);
 }
 
 /* RES 5,B */
 static void CB_op0xA8(void)
 {
-	B = res_bit(B, 5);
+	B = reset_bit(B, 5);
 }
 
 /* RES 5,C */
 static void CB_op0xA9(void)
 {
-	C = res_bit(C, 5);
+	C = reset_bit(C, 5);
 }
 
 /* RES 5,D */
 static void CB_op0xAA(void)
 {
-	D = res_bit(D, 5);
+	D = reset_bit(D, 5);
 }
 
 /* RES 5,E */
 static void CB_op0xAB(void)
 {
-	E = res_bit(E, 5);
+	E = reset_bit(E, 5);
 }
 
 /* RES 5,H */
 static void CB_op0xAC(void)
 {
-	H = res_bit(H, 5);
+	H = reset_bit(H, 5);
 }
 
 /* RES 5,L */
 static void CB_op0xAD(void)
 {
-	L = res_bit(L, 5);
+	L = reset_bit(L, 5);
 }
 
 /* RES 5,(HL) */
@@ -3472,50 +3472,50 @@ static void CB_op0xAE(void)
 {
 	u16 address = (H << 8) + L;
 	u8 reg = read_memory(address);
-	reg = res_bit(reg, 5);
+	reg = reset_bit(reg, 5);
 	write_memory(address, reg);
 }
 
 /* RES 5,A */
 static void CB_op0xAF(void)
 {
-	A = res_bit(A, 5);
+	A = reset_bit(A, 5);
 }
 
 /* RES 6,B */
 static void CB_op0xB0(void)
 {
-	B = res_bit(B, 6);
+	B = reset_bit(B, 6);
 }
 
 /* RES 6,C */
 static void CB_op0xB1(void)
 {
-	C = res_bit(C, 6);
+	C = reset_bit(C, 6);
 }
 
 /* RES 6,D */
 static void CB_op0xB2(void)
 {
-	D = res_bit(D, 6);
+	D = reset_bit(D, 6);
 }
 
 /* RES 6,E */
 static void CB_op0xB3(void)
 {
-	E = res_bit(E, 6);
+	E = reset_bit(E, 6);
 }
 
 /* RES 6,H */
 static void CB_op0xB4(void)
 {
-	H = res_bit(H, 6);
+	H = reset_bit(H, 6);
 }
 
 /* RES 6,L */
 static void CB_op0xB5(void)
 {
-	L = res_bit(L, 6);
+	L = reset_bit(L, 6);
 }
 
 /* RES 6,(HL) */
@@ -3523,50 +3523,50 @@ static void CB_op0xB6(void)
 {
 	u16 address = (H << 8) + L;
 	u8 reg = read_memory(address);
-	reg = res_bit(reg, 6);
+	reg = reset_bit(reg, 6);
 	write_memory(address, reg);
 }
 
 /* RES 6,A */
 static void CB_op0xB7(void)
 {
-	A = res_bit(A, 6);
+	A = reset_bit(A, 6);
 }
 
 /* RES 7,B */
 static void CB_op0xB8(void)
 {
-	B = res_bit(B, 7);
+	B = reset_bit(B, 7);
 }
 
 /* RES 7,C */
 static void CB_op0xB9(void)
 {
-	C = res_bit(C, 7);
+	C = reset_bit(C, 7);
 }
 
 /* RES 7,D */
 static void CB_op0xBA(void)
 {
-	D = res_bit(D, 7);
+	D = reset_bit(D, 7);
 }
 
 /* RES 7,E */
 static void CB_op0xBB(void)
 {
-	E = res_bit(E, 7);
+	E = reset_bit(E, 7);
 }
 
 /* RES 7,H */
 static void CB_op0xBC(void)
 {
-	H = res_bit(H, 7);
+	H = reset_bit(H, 7);
 }
 
 /* RES 7,L */
 static void CB_op0xBD(void)
 {
-	L = res_bit(L, 7);
+	L = reset_bit(L, 7);
 }
 
 /* RES 7,(HL) */
@@ -3574,14 +3574,14 @@ static void CB_op0xBE(void)
 {
 	u16 address = (H << 8) + L;
 	u8 reg = read_memory(address);
-	reg = res_bit(reg, 7);
+	reg = reset_bit(reg, 7);
 	write_memory(address, reg);
 }
 
 /* RES 7,A */
 static void CB_op0xBF(void)
 {
-	A = res_bit(A, 7);
+	A = reset_bit(A, 7);
 }
 
 /* SET 0,B */

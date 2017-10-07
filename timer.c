@@ -39,7 +39,7 @@ void update_timer(void)
 		break;
 	}
 
-	if ((BIT_2(*tac)) && (tima_count >= cpu_clock)) {
+	if ((get_bit(*tac, 2)) && (tima_count >= cpu_clock)) {
 		if (*tima == 0xFF) {
 			*tima = *tma;
 			request_interrupt(INT_TIMER);
