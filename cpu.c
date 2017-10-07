@@ -463,16 +463,6 @@ static void check_bit(u8 reg, u8 bit)
 	set_flag(HFLAG);
 }
 
-static u8 res_bit(u8 reg, u8 bit)
-{
-	return reg & (~(1U << bit));
-}
-
-static u8 set_bit(u8 reg, u8 bit)
-{
-	return reg | (1U << bit);
-}
-
 void init_cpu(void)
 {
 	A = 0x01;

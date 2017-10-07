@@ -4,6 +4,7 @@
 
 #include "gameboy.h"
 
+#include "interrupt.h"
 #include "error.h"
 #include "memory.h"
 #include "video.h"
@@ -40,7 +41,7 @@ static void tile_data(u8 *tile, u8 tile_nr)
 	u8 lsb, msb;
 	int offset = 0;
 
-	if (BIT_4(lcdc_register)) {
+	if (get_bit(lcdc_register, 4)) {
 		max_vram_range = 0x8FFF;
 	} else {
 		max_vram_range = 0x97FF;
