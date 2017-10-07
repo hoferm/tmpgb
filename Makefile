@@ -1,27 +1,18 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c99 -pedantic -DDEBUG -g
-LDFLAGS = -Llib -lSDL2
-DEPDIR = .d
+CFLAGS = -Wall -Wextra -std=c99 -pedantic -DDEBUG -g -O2
+LDFLAGS = -lSDL2
 BUILDDIR = obj
-DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.d
 
 SRC = $(wildcard *.c)
-HDR = $(wildcard *.h)
 
-%.o: %.c
-$(BUILDDIR)/%.o: %.c $(DEPDIR)/%.d
-	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
-
-$(DEPDIR)/%.d: ;
-.PRECIOUS: $(DEPDIR)/%.d
+$(BUILDDIR)/%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 tmpgb: $(SRC:%.c=$(BUILDDIR)/%.o)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(DEPFLAGS) -o $@ $^
-
--include $(patsubst %,$(DEPDIR)/%.d,$(basename $(SRC)))
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 clean:
-	rm tmpgb $(BUILDDIR)/*.o $(DEPDIR)/*.d
+	rm tmpgb $(BUILDDIR)/*.o
 
 .PHONY:
 	clean all
