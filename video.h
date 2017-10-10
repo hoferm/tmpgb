@@ -6,5 +6,6 @@
 
 void init_vram(void);
 
-int screen_enabled(void);
+int draw_scanline(unsigned char *line);
+void update_registers(void);
 #endif

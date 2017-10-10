@@ -20,23 +20,23 @@ struct sprite {
 };
 
 static u8 *vram;
-static u16 max_vram_range = 0x97FF;
 
 static int palette[4] = { 0xFFFFFF, 0xB2B2B2, 0x666666, 0x0 };
+static int bg_palette[4] = { 0, 1, 2, 3 };
 
 static u8 lcdc_register;
 static int display_enable;
 
 static int ly_count;
 
-static void update_palette(int *palette)
+static void update_palette(void)
 {
 	u8 bgp_data = read_memory(0xFF47);
 
-	palette[0] = bgp_data & 0x3;
-	palette[1] = (bgp_data >> 2) & 0x3;
-	palette[2] = (bgp_data >> 4) & 0x3;
-	palette[3] = (bgp_data >> 6) & 0x3;
+	bg_palette[0] = bgp_data & 0x3;
+	bg_palette[1] = (bgp_data >> 2) & 0x3;
+	bg_palette[2] = (bgp_data >> 4) & 0x3;
+	bg_palette[3] = (bgp_data >> 6) & 0x3;
 }
 
 /* partial visible tiles? */
@@ -48,27 +48,26 @@ static void tile_data(u8 *tile, u8 tile_nr, int size)
 	u8 lsb, msb;
 	int offset = 0;
 
-	if (get_bit(lcdc_register, 4)) {
-		max_vram_range = 0x8FFF;
-	} else {
-		max_vram_range = 0x97FF;
+	if (!get_bit(lcdc_register, 4)) {
 		offset = 0x800;
 	}
 
 	lsb = vram[start];
 	msb = vram[start + 1];
 
-	for (j = size; j >= 0; --j) {
+	for (j = size; j >= 0; j--) {
 		color = ((lsb >> j) & 0x1) + (((msb >> j) & 0x1) << 1);
-
 		if (j == 0)
-			*(tile + offset + 7) = color;
+			*(tile + offset + 7) = palette[bg_palette[color]];
 		else
-			*(tile + offset + (j % 7)) = color;
+			*(tile + offset + (j % 7)) = palette[bg_palette[color]];
 	}
 }
 
-/* Draw tiles per line */
+/*
+ * Draw tiles per line
+ * skip tile_nr check after first check
+ */
 static void draw_tiles(u8 *line, u8 ly)
 {
 	u8 scy = read_memory(0xFF42) + ly;
@@ -76,12 +75,15 @@ static void draw_tiles(u8 *line, u8 ly)
 	int i, j = 0;
 	int k = 0;
 	u8 tile_nr;
-	int offset = scy * WIDTH;
+	int offset = 0x1800 + (scy * WIDTH);
 
-	for (i = scx + 1, tile_nr = vram[scx + offset]; i < WIDTH; i++) {
-		if (tile_nr == vram[i + offset]) {
+	if (get_bit(lcdc_register, 3))
+		offset += 0x400;
+
+	for (i = scx + 1, tile_nr = *(vram + scx + offset); i < WIDTH; i++) {
+		if (tile_nr == *(vram + i + offset)) {
 			k++;
-			tile_nr = vram[i + offset];
+			tile_nr = *(vram + i + offset);
 			continue;
 		}
 		tile_data(line + j, tile_nr, k);
@@ -96,14 +98,12 @@ static void draw_sprites(void)
 }
 
 /* TODO: Use enum for return */
-int draw_scanline(void)
+int draw_scanline(u8 *line)
 {
-	int bg_palette[4] = { 0, 1, 2, 3 };
 	u8 stat = read_memory(0xFF41);
 	u8 ly = read_memory(0xFF44);
 	u8 lyc = read_memory(0xFF45);
 	int inc = cpu_cycle() - old_cpu_cycle();
-	u8 line[WIDTH];
 
 	if (!display_enable)
 		return -1;
@@ -118,6 +118,8 @@ int draw_scanline(void)
 
 	if (ly == lyc)
 		write_memory(0xFF41, set_bit(stat, 2));
+
+	update_palette();
 
 	draw_tiles(line, ly);
 	draw_sprites();
