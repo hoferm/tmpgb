@@ -1,3 +1,5 @@
+#ifndef OPNAMES_H
+#define OPNAMES_H
 const char *op_names[256] = {
 	"NOP",
 	"LD BC,nn",
@@ -256,3 +258,4 @@ const char *op_names[256] = {
 	"CP A,n",
 	"RST 0x38"
 };
+#endif

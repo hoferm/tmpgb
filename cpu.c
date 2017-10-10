@@ -2,7 +2,6 @@
 
 #include "interrupt.h"
 #include "memory.h"
-#include "opnames.h"
 
 #define ZFLAG 0x80
 #define NFLAG 0x40
@@ -62,7 +61,6 @@ static void push_stack(u8 low, u8 high)
 	write_memory(SP, high);
 	SP--;
 	write_memory(SP, low);
-	log_msg("Stack: high: %.2X, low: %.2X\n", high, low);
 }
 
 static u16 pop_stack(void)
@@ -73,7 +71,6 @@ static u16 pop_stack(void)
 
 	SP += 2;
 
-	log_msg("Stack: %.4X\n", value);
 	return value;
 }
 
@@ -84,7 +81,6 @@ static u8 fetch_8bit_data(void)
 	data = read_memory(PC);
 	PC++;
 
-	log_msg("Byte value: %.2X\n", data);
 	tick();
 
 	return data;
@@ -97,7 +93,6 @@ static u16 fetch_16bit_data(void)
 	data = read_memory(PC) + (read_memory(PC + 1) << 8);
 	PC = PC + 2;
 
-	log_msg("2 Byte value: %.4X\n", data);
 	tick();
 	tick();
 
@@ -111,8 +106,6 @@ static void execute_opcode(u8 opcode)
 		push_stack(PC, PC >> 8);
 		PC = interrupt;
 	}
-	log_msg("%d: %s (%.2X): PC: %.4X, SP: %.4X\t", opcount, op_names[opcode], opcode, PC, SP);
-	log_msg("B: %.2X, C: %.2X, D: %.2X, E: %.2X, H: %.2X, L: %.2X, A: %.2X, F: %.2X\n", B, C, D, E, H, L, A, F);
 
 	optable[opcode]();
 
@@ -479,6 +472,21 @@ void init_cpu(void)
 
 	init_optable();
 	init_cb_optable();
+}
+
+void cpu_debug_info(struct cpu_info *cpu)
+{
+	cpu->PC = &PC;
+	cpu->SP = &SP;
+
+	cpu->B = &B;
+	cpu->C = &C;
+	cpu->D = &D;
+	cpu->E = &E;
+	cpu->H = &H;
+	cpu->L = &L;
+	cpu->A = &A;
+	cpu->F = &F;
 }
 
 /* NOP */

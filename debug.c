@@ -1,29 +1,65 @@
 #include <stdio.h>
-#include <stdarg.h>
-#include <stdlib.h>
+#include <string.h>
 
-static FILE *fp;
+#include "gameboy.h"
 
-void log_close(void)
+#include "cpu.h"
+#include "memory.h"
+#include "opnames.h"
+
+static struct cpu_info cpu;
+
+static void cursor(void)
 {
-	fclose(fp);
+	printf("    at 0x%.4X >> ", *cpu.PC);
 }
 
-void log_msg(const char *fmt, ...)
+static void disassemble(int n)
 {
-	va_list ap;
+	int i;
+	u8 opcode;
 
-	va_start(ap, fmt);
-	vfprintf(fp, fmt, ap);
-	va_end(ap);
+	for (i = 0; i < n; i++) {
+		opcode = read_memory((*cpu.PC) + i);
+		printf("\t0x%.4X (%s)\n", (*cpu.PC) + i, op_names[opcode]);
+	}
 }
 
-int log_init(const char *file)
+static void step(void)
 {
-	fp = fopen(file, "a");
+	disassemble(1);
+	fetch_opcode();
+}
 
-	if (fp == NULL)
-		return -1;
+void debug(void)
+{
+	char buf[16];
+	char cmd[16];
+	int param;
+	int n;
 
-	return 0;
+	cursor();
+	if (fgets(buf, 16, stdin) == NULL)
+		die("debug: could not read from stdin");
+
+	n = sscanf(buf, "%s", cmd);
+
+	if (n < 1) {
+	}
+
+	if (!strcmp(cmd, "s")) {
+		step();
+	} else if (sscanf(buf, "%s %d\n", cmd, &param) >= 1) {
+		if (!strcmp(cmd, "d")) {
+			disassemble(param);
+		}
+	} else {
+		printf("Unknown command\n");
+		return;
+	}
+}
+
+void setup_debug(void)
+{
+	cpu_debug_info(&cpu);
 }

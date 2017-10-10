@@ -5,6 +5,7 @@
 #include "gameboy.h"
 
 #include "cpu.h"
+#include "debug.h"
 #include "error.h"
 #include "memory.h"
 #include "gui.h"
@@ -59,10 +60,14 @@ static void run(void)
 	if (init_sdl() != 0)
 		die("Failed to create window");
 
+	draw_background();
+	setup_debug();
+
 	while (!quit) {
-		draw_background();
+		update_screen();
 		quit = handle_event();
-		fetch_opcode();
+		debug();
+		/* fetch_opcode(); */
 	}
 }
 
@@ -109,19 +114,12 @@ int main(int argc, char **argv)
 	if (res != 0)
 		usage();
 
-	if (!oflag)
-		logfile = "log_out";
-
 	rom = argv[0];
-
-	if (log_init(logfile) != 0)
-		die_errno("could not open file %s", logfile);
 
 	load_rom(rom);
 
 	run();
 
-	log_close();
 	close_sdl();
 
 	return 0;
