@@ -14,13 +14,19 @@ u8 set_bit(u8 val, int bit);
 u8 reset_bit(u8 val, int bit);
 int get_bit(u8 val, int bit);
 
-#ifdef DEBUG
-void log_close(void);
-void log_msg(const char *fmt, ...);
-int log_init(const char *file);
-#else
-void log_close() {}
-void log_msg() {}
-int log_init() {}
-#endif
+struct cpu_info {
+	u16 *PC;
+	u16 *SP;
+
+	u8 *B;
+	u8 *C;
+	u8 *D;
+	u8 *E;
+	u8 *H;
+	u8 *L;
+	u8 *A;
+	u8 *F;
+};
+
+void cpu_debug_info(struct cpu_info *cpu);
 #endif
