@@ -1,7 +1,10 @@
 #include <stdio.h>
 #include <SDL2/SDL.h>
 
+#include "gameboy.h"
+
 #include "error.h"
+#include "memory.h"
 #include "video.h"
 
 static SDL_Window *window;
@@ -27,6 +30,8 @@ int init_sdl(void)
 		goto out;
 	}
 
+	init_vram();
+
 out:
 	if (ret == -1) {
 		errnr = SDL_ERR;
@@ -35,8 +40,37 @@ out:
 	return ret;
 }
 
+static void convert_palette(int *rgb, int hex)
+{
+	rgb[0] = hex >> 16;
+	rgb[1] = (hex >> 8) & 0xFF;
+	rgb[2] = hex & 0xFF;
+}
+
 void update_screen(void)
 {
+	u8 line[WIDTH];
+	int i;
+	int color[3];
+	u8 ly = read_memory(0xFF44);
+	SDL_Rect r;
+	r.y = ly;
+	r.w = 1;
+	r.h = 1;
+
+	memset(line, 0, WIDTH);
+
+	update_registers();
+	draw_scanline(line);
+
+	for (i = 0; i < WIDTH; i++) {
+		convert_palette(color, line[i]);
+		r.x = i;
+		SDL_SetRenderDrawColor(renderer, color[0], color[1], color[2], 255);
+		SDL_RenderDrawRect(renderer, &r);
+	}
+
+	SDL_RenderPresent(renderer);
 }
 
 /* Disable display */
