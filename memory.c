@@ -22,7 +22,7 @@
 /* Cartridge type address */
 #define CART_TYPE 0x147
 
-static struct {
+static struct mem {
 	u8 rom[0x4000]; /* 0x0000 - 0x3FFF */
 	u8 rom_bank[512][0x4000]; /* 0x4000 - 0x7FFF */
 	u8 vram[0x2000]; /* 0x8000 - 0x9FFF */
@@ -176,7 +176,6 @@ void write_memory(u16 address, u8 value)
 			memory.hram[offset] = value;
 		} else {
 			memory.interrupt_enable = value & 0x01FF;
-			printf("Interrupt enable: %d\n", memory.interrupt_enable);
 		}
 		break;
 	default:
