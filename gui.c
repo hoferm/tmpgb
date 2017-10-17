@@ -12,7 +12,7 @@ static SDL_Renderer *renderer;
 
 static void clear(void)
 {
-	SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+	SDL_SetRenderDrawColor(renderer, 235, 183, 139, 255);
 	SDL_RenderClear(renderer);
 }
 
@@ -25,7 +25,13 @@ int init_sdl(void)
 		goto out;
 	}
 
-	if (SDL_CreateWindowAndRenderer(WIDTH, HEIGHT, SDL_WINDOW_RESIZABLE, &window, &renderer) < 0) {
+	window = SDL_CreateWindow("tmpgb", 0, 0, WIDTH, HEIGHT, SDL_WINDOW_SHOWN);
+	if (!window) {
+		ret = -1;
+		goto out;
+	}
+	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+	if (!renderer) {
 		ret = -1;
 		goto out;
 	}
