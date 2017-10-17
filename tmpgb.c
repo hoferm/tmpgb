@@ -8,7 +8,7 @@
 #include "debug.h"
 #include "error.h"
 #include "memory.h"
-#include "gui.h"
+#include "display.h"
 
 #define READ_SIZE 0x4000
 
