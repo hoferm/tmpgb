@@ -1,3 +1,5 @@
+#ifndef MEMORY_H
+#define MEMORY_H
 enum {
 	ROM,
 	MBC1
@@ -17,3 +19,4 @@ unsigned char *get_tma(void);
 unsigned char *get_tac(void);
 
 int init_memory(void);
+#endif
