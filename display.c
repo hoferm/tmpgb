@@ -39,10 +39,8 @@ int init_sdl(void)
 	init_vram();
 
 out:
-	if (ret == -1) {
-		errnr = SDL_ERR;
-		fprintf(stderr, "%s", SDL_GetError());
-	}
+	if (ret == -1)
+		error(SDL_GetError());
 	return ret;
 }
 
