@@ -8,7 +8,7 @@ typedef unsigned long u64;
 void usagef(const char *err, ...);
 void die_errno(const char *err, ...);
 void die(const char *err, ...);
-void error(const char *err, ...);
+void errorf(const char *err, ...);
 
 u8 set_bit(u8 val, int bit);
 u8 reset_bit(u8 val, int bit);

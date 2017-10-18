@@ -4,8 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "error.h"
-
 static void vreportf(const char *prefix, const char *err, va_list params)
 {
 	char msg[512];
@@ -49,7 +47,7 @@ void die(const char *err, ...)
 	exit(128);
 }
 
-void error(const char *err, ...)
+void errorf(const char *err, ...)
 {
 	va_list params;
 
