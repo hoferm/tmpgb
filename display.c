@@ -72,8 +72,8 @@ void update_screen(void)
 		r.x = i;
 		SDL_SetRenderDrawColor(renderer, color[0], color[1], color[2], 255);
 		SDL_RenderFillRect(renderer, &r);
-		SDL_RenderPresent(renderer);
 	}
+	SDL_RenderPresent(renderer);
 }
 
 /* Disable display */

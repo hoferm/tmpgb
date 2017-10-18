@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 
 #include "gameboy.h"
@@ -21,7 +22,7 @@ struct sprite {
 
 static u8 *vram;
 
-static int palette[4] = { 0xFFFFFF, 0xB2B2B2, 0x666666, 0x0 };
+static int palette[4] = { 0xFFFFFF, 0xB2B2B2, 0x666666, 0x191919 };
 static int bg_palette[4] = { 0, 1, 2, 3 };
 
 static u8 lcdc_register;
@@ -52,21 +53,23 @@ static void tile_data(u8 *tile, u8 tile_nr, int size)
 		offset = 0x800;
 	}
 
-	lsb = vram[start];
-	msb = vram[start + 1];
+	lsb = vram[start + offset];
+	msb = vram[start + offset + 1];
 
 	for (j = size; j >= 0; j--) {
 		color = ((lsb >> j) & 0x1) + (((msb >> j) & 0x1) << 1);
+		printf("%d\n", color);
+		printf("%X", palette[bg_palette[color]]);
 		if (j == 0)
-			*(tile + offset + 7) = palette[bg_palette[color]];
+			*(tile + 7) = palette[bg_palette[color]];
 		else
-			*(tile + offset + (j % 7)) = palette[bg_palette[color]];
+			*(tile + (j % 7)) = palette[bg_palette[color]];
 	}
 }
 
 /*
  * Draw tiles per line
- * skip tile_nr check after first check
+ * TODO: skip tile_nr check after first check
  */
 static void draw_tiles(u8 *line, u8 ly)
 {
@@ -87,7 +90,6 @@ static void draw_tiles(u8 *line, u8 ly)
 			continue;
 		}
 		tile_data(line + j, tile_nr, k);
-
 		j++;
 	}
 }
@@ -109,23 +111,18 @@ int draw_scanline(u8 *line)
 		return -1;
 
 	ly_count += inc;
-
 	if (ly_count < 252)
 		return -1;
-
 	ly_count -= 252;
 
 	if (ly >= 144)
 		request_interrupt(INT_VBLANK);
-
 	if (ly == lyc)
 		write_memory(0xFF41, set_bit(stat, 2));
 
 	update_palette();
-
 	draw_tiles(line, ly);
 	draw_sprites();
-
 	write_memory(0xFF44, ly + 1);
 
 	return 0;
