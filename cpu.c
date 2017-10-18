@@ -28,8 +28,8 @@ static u16 SP;
 
 static u64 opcount = 0;
 
-static u64 clock_count = 0;
-static u64 old_clock_count = 0;
+static int clock_count = 0;
+static int old_clock_count = 0;
 
 static int disable_interrupt = 0;
 static int stopped = 0;
@@ -49,10 +49,10 @@ int old_cpu_cycle(void)
 	return old_clock_count;
 }
 
-void reset_clock_count(void)
+static void reset_clock_count(void)
 {
-	clock_count = 0;
-	old_clock_count = 0;
+	clock_count -= 1024;
+	old_clock_count -= 1024;
 }
 
 static void push_stack(u8 low, u8 high)
@@ -119,6 +119,8 @@ void fetch_opcode(void)
 {
 	u8 opcode;
 
+	if (clock_count >= 1024)
+		reset_clock_count();
 	old_clock_count = clock_count;
 	opcode = read_memory(PC);
 	PC++;
