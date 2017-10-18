@@ -40,7 +40,7 @@ int init_sdl(void)
 
 out:
 	if (ret == -1)
-		error(SDL_GetError());
+		errorf(SDL_GetError());
 	return ret;
 }
 
@@ -71,10 +71,9 @@ void update_screen(void)
 		convert_palette(color, line[i]);
 		r.x = i;
 		SDL_SetRenderDrawColor(renderer, color[0], color[1], color[2], 255);
-		SDL_RenderDrawRect(renderer, &r);
+		SDL_RenderFillRect(renderer, &r);
+		SDL_RenderPresent(renderer);
 	}
-
-	SDL_RenderPresent(renderer);
 }
 
 /* Disable display */
