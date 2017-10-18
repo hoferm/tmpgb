@@ -1,5 +1,11 @@
-CC = gcc
+CC = cc
 CFLAGS = -Wall -Wextra -std=c99 -pedantic -DDEBUG -g -O2
+CFLAGS += -Werror \
+	-Wstrict-prototypes \
+	-Wdeclaration-after-statement \
+	-Wno-format-zero-length \
+	-Wold-style-definition \
+	-Wvla
 LDFLAGS = -lSDL2
 BUILDDIR = obj
 
