@@ -21,7 +21,7 @@ void update_timer(void)
 
 	if (div_count >= 256) {
 		(*div)++;
-		div_count = 0;
+		div_count -= 256;
 	}
 
 	switch (*tac & 0x3) {
@@ -47,7 +47,7 @@ void update_timer(void)
 			(*tima)++;
 		}
 
-		tima_count = 0;
+		tima_count -= cpu_clock;
 	}
 }
 
