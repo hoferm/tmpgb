@@ -22,7 +22,6 @@ struct sprite {
 
 static u8 *vram;
 
-static int palette[4] = { 0xFFFFFF, 0xB2B2B2, 0x666666, 0x191919 };
 static int bg_palette[4] = { 0, 1, 2, 3 };
 
 static u8 lcdc_register;
@@ -58,12 +57,10 @@ static void tile_data(u8 *tile, u8 tile_nr, int size)
 
 	for (j = size; j >= 0; j--) {
 		color = ((lsb >> j) & 0x1) + (((msb >> j) & 0x1) << 1);
-		printf("%d\n", color);
-		printf("%X", palette[bg_palette[color]]);
 		if (j == 0)
-			*(tile + 7) = palette[bg_palette[color]];
+			*(tile + 7) = bg_palette[color];
 		else
-			*(tile + (j % 7)) = palette[bg_palette[color]];
+			*(tile + (j % 7)) = bg_palette[color];
 	}
 }
 
