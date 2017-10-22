@@ -9,7 +9,7 @@
 
 static SDL_Window *window;
 static SDL_Renderer *renderer;
-static int palette[4] = { 0xFFFFFF, 0xB2B2B2, 0x666666, 0x191919 };
+static int palette[4] = { 0xEEEEEE, 0xB2B2B2, 0x666666, 0x191919 };
 
 static void clear(void)
 {
@@ -70,7 +70,6 @@ void update_screen(void)
 
 	for (i = 0; i < WIDTH; i++) {
 		convert_palette(color, palette[line[i]]);
-		printf("RGB: %d, %d, %d\n", color[0], color[1], color[2]);
 		r.x = i;
 		SDL_SetRenderDrawColor(renderer, color[0], color[1], color[2], 255);
 		SDL_RenderFillRect(renderer, &r);
