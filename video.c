@@ -42,7 +42,7 @@ static void update_palette(void)
 /* partial visible tiles? */
 static void tile_data(u8 *tile, u8 tile_nr, int size)
 {
-	int j;
+	int i;
 	int start = tile_nr * 16;
 	u8 color;
 	u8 lsb, msb;
@@ -55,12 +55,12 @@ static void tile_data(u8 *tile, u8 tile_nr, int size)
 	lsb = vram[start + offset];
 	msb = vram[start + offset + 1];
 
-	for (j = size; j >= 0; j--) {
-		color = ((lsb >> j) & 0x1) + (((msb >> j) & 0x1) << 1);
-		if (j == 0)
+	for (i = size; i >= 0; i--) {
+		color = ((lsb >> i) & 0x1) + (((msb >> i) & 0x1) << 1);
+		if (i == 0)
 			*(tile + 7) = bg_palette[color];
 		else
-			*(tile + (j % 7)) = bg_palette[color];
+			*(tile + (i % 7)) = bg_palette[color];
 	}
 }
 
