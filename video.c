@@ -72,7 +72,7 @@ static void draw_tiles(u8 *line, u8 ly)
 {
 	u8 scy = read_memory(0xFF42) + ly;
 	u8 scx = read_memory(0xFF43);
-	int i, j = 0;
+	int i, j = 1;
 	int k = 0;
 	u8 tile_nr;
 	int offset = 0x1800 + (scy * WIDTH);
@@ -80,14 +80,22 @@ static void draw_tiles(u8 *line, u8 ly)
 	if (get_bit(lcdc_register, 3))
 		offset += 0x400;
 
-	for (i = scx + 1, tile_nr = *(vram + scx + offset); i < WIDTH; i++) {
-		if (tile_nr == *(vram + i + offset)) {
-			k++;
-			tile_nr = *(vram + i + offset);
+	tile_nr = *(vram + scx + offset);
+	for (i = scx + 1; i < WIDTH; i++) {
+		if (i <= 7) {
+			if (tile_nr == *(vram + i + offset)) {
+				k++;
+				continue;
+			}
+			tile_data(line, tile_nr, k);
 			continue;
+		} else if (i + k == WIDTH) {
+			tile_data(line + j, tile_nr, 7 - k);
 		}
-		tile_data(line + j, tile_nr, k);
+		tile_nr = *(vram + i + offset);
+		tile_data(line + j, tile_nr, 7);
 		j++;
+		i += 7;
 	}
 }
 
