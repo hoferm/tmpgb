@@ -39,8 +39,7 @@ static void update_palette(void)
 	bg_palette[3] = (bgp_data >> 6) & 0x3;
 }
 
-/* partial visible tiles? */
-static void tile_data(u8 *tile, u8 tile_nr, int size)
+static void tile_data(u8 *tile, u8 tile_nr)
 {
 	int i;
 	int start = tile_nr * 16;
@@ -64,38 +63,20 @@ static void tile_data(u8 *tile, u8 tile_nr, int size)
 	}
 }
 
-/*
- * Draw tiles per line
- * TODO: skip tile_nr check after first check
- */
 static void draw_tiles(u8 *line, u8 ly)
 {
 	u8 scy = read_memory(0xFF42) + ly;
 	u8 scx = read_memory(0xFF43);
-	int i, j = 1;
-	int k = 0;
+	int i;
 	u8 tile_nr;
-	int offset = 0x1800 + (scy * WIDTH);
+	int offset = 0x1800 + (scy * (WIDTH / 8));
 
 	if (get_bit(lcdc_register, 3))
 		offset += 0x400;
 
-	tile_nr = *(vram + scx + offset);
-	for (i = scx + 1; i < WIDTH; i++) {
-		if (i <= 7) {
-			if (tile_nr == *(vram + i + offset)) {
-				k++;
-				continue;
-			}
-			tile_data(line, tile_nr, k);
-			continue;
-		} else if (i + k == WIDTH) {
-			tile_data(line + j, tile_nr, 7 - k);
-		}
-		tile_nr = *(vram + i + offset);
-		tile_data(line + j, tile_nr, 7);
-		j++;
-		i += 7;
+	for (i = scx; i < WIDTH / 8; i++) {
+		tile_nr = vram[i + offset];
+		tile_data(line, tile_nr);
 	}
 }
 
