@@ -39,6 +39,11 @@ static void update_palette(void)
 	bg_palette[3] = (bgp_data >> 6) & 0x3;
 }
 
+static u8 extract_color(u8 lsb, u8 msb, int px)
+{
+	return ((lsb >> px) & 0x1) + (((msb >> px) & 0x1) << 1);
+}
+
 static void tile_data(u8 *tile, u8 tile_nr)
 {
 	int i;
@@ -54,12 +59,15 @@ static void tile_data(u8 *tile, u8 tile_nr)
 	lsb = vram[start + offset];
 	msb = vram[start + offset + 1];
 
-	for (i = size; i >= 0; i--) {
-		color = ((lsb >> i) & 0x1) + (((msb >> i) & 0x1) << 1);
+	for (i = 7; i >= 0; i--) {
+		color = extract_color(lsb, msb, i);
 		if (i == 0)
-			*(tile + 7) = bg_palette[color];
+			tile[7] = bg_palette[color];
 		else
-			*(tile + (i % 7)) = bg_palette[color];
+			tile[i & 7] = bg_palette[color];
+	}
+}
+
 	}
 }
 
