@@ -1,5 +1,6 @@
 CC = cc
-CFLAGS = -Wall -Wextra -std=c99 -pedantic -DDEBUG -g -O2
+RM = rm -f
+CFLAGS = -Wall -Wextra -std=c99 -pedantic -g -O2
 CFLAGS += -Werror \
 	-Wstrict-prototypes \
 	-Wdeclaration-after-statement \
@@ -9,19 +10,21 @@ CFLAGS += -Werror \
 LDFLAGS = -lSDL2
 BUILDDIR = obj
 
+QUIET_CC = @echo '   ' CC $@;
+QUIET_LINK = @echo '   ' LINK $@;
+
 SRC = $(wildcard *.c)
 
 $(BUILDDIR)/%.o: %.c | $(BUILDDIR)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(QUIET_CC)$(CC) $(CFLAGS) -c $< -o $@
 
 tmpgb: $(SRC:%.c=$(BUILDDIR)/%.o)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+	$(QUIET_LINK)$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 $(BUILDDIR):
-	mkdir $(BUILDDIR)
+	mkdir $@
 
 clean:
-	rm tmpgb $(BUILDDIR)/*.o
+	$(RM) tmpgb $(BUILDDIR)/*.o
 
-.PHONY:
-	clean all
+.PHONY: clean all cscope tags
