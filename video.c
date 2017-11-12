@@ -9,6 +9,11 @@
 #include "memory.h"
 #include "video.h"
 
+#define STAT 0xFF41
+#define SCY 0xFF42
+#define SCX 0xFF43
+#define LY 0xFF44
+
 #define BG_MAP_SIZE 256
 #define BG_MAP_START 0x9800
 #define BG_MAP_END 0x9BFF
@@ -108,8 +113,8 @@ static void sprites(struct sprite *sp_array, u8 ly, int *size)
 
 static void draw_line(u8 *line, u8 ly)
 {
-	u8 scy = read_memory(0xFF42) + ly;
-	u8 scx = read_memory(0xFF43);
+	u8 scy = read_memory(SCY) + ly;
+	u8 scx = read_memory(SCX);
 	int i;
 	u8 tile_nr;
 	int offset = 0x1800 + (scy * (WIDTH / 8));
@@ -130,8 +135,8 @@ static void draw_line(u8 *line, u8 ly)
 /* TODO: Use enum for return */
 int draw_scanline(u8 *line)
 {
-	u8 stat = read_memory(0xFF41);
-	u8 ly = read_memory(0xFF44);
+	u8 stat = read_memory(STAT);
+	u8 ly = read_memory(LY);
 	u8 lyc = read_memory(0xFF45);
 	int inc = cpu_cycle() - old_cpu_cycle();
 
@@ -146,11 +151,11 @@ int draw_scanline(u8 *line)
 	if (ly >= 144)
 		request_interrupt(INT_VBLANK);
 	if (ly == lyc)
-		write_memory(0xFF41, set_bit(stat, 2));
+		write_memory(STAT, set_bit(stat, 2));
 
 	update_palette();
 	draw_line(line, ly);
-	write_memory(0xFF44, ly + 1);
+	write_memory(LY, ly + 1);
 
 	return 0;
 }
@@ -161,8 +166,8 @@ void update_registers(void)
 	lcdc_register = read_memory(0xFF40);
 	tmp = get_bit(lcdc_register, 7);
 
-	if (display_enable == 0 && tmp == 1)
-		write_memory(0xFF44, 0);
+	if (!display_enable && tmp)
+		write_memory(LY, 0);
 
 	display_enable = tmp;
 }
