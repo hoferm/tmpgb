@@ -118,13 +118,12 @@ void write_memory(u16 address, u8 value)
 	case 0x0:
 	case 0x1:
 		memory.ram_enable = enable_ram(value);
+		break;
 	case 0x2:
 	case 0x3:
-		if (address >= 0x2000) {
-			bank = select_rom_bank(value);
-			memory.selected_rom = bank;
-			memory.curr_rom = memory.rom_bank[bank];
-		}
+		bank = select_rom_bank(value);
+		memory.selected_rom = bank;
+		memory.curr_rom = memory.rom_bank[bank];
 		break;
 	case 0x4:
 	case 0x5:
@@ -135,11 +134,10 @@ void write_memory(u16 address, u8 value)
 			memory.selected_rom += (bank << 5);
 			memory.curr_rom = memory.rom_bank[memory.selected_rom];
 		}
+		break;
 	case 0x6:
 	case 0x7:
-		if (address >= 0x6000) {
-			change_mbc_mode(value);
-		}
+		change_mbc_mode(value);
 		break;
 	case 0x8:
 	case 0x9:
