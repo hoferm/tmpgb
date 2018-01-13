@@ -1,0 +1,5 @@
+#ifndef TIMER_H
+#define TIMER_H
+void update_timer(void);
+void init_timer(void);
+#endif
