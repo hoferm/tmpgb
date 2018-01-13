@@ -63,10 +63,9 @@ void update_screen(void)
 	r.w = 1;
 	r.h = 1;
 
-	memset(line, 0, WIDTH);
-
 	update_registers();
-	draw_scanline(line);
+	if (draw_scanline(line) == -1)
+		return;
 
 	for (i = 0; i < WIDTH; i++) {
 		convert_palette(color, palette[line[i]]);
