@@ -4,7 +4,9 @@
 #include "gameboy.h"
 
 #include "cpu.h"
+#include "display.h"
 #include "memory.h"
+#include "timer.h"
 #include "opnames.h"
 
 static struct cpu_info cpu;
@@ -42,6 +44,8 @@ static void disassemble(int n)
 
 static void step(void)
 {
+	update_timer();
+	update_screen();
 	disassemble(1);
 	fetch_opcode();
 }
@@ -92,12 +96,52 @@ static void view_mem(u16 start, u16 end)
 	printf("\n");
 }
 
+static void continue_reg_breakpoint(char reg, unsigned value)
+{
+	switch (reg) {
+	case 'A':
+		while (!(*cpu.A == value))
+			step();
+		break;
+	case 'B':
+		while (!(*cpu.B == value))
+			step();
+		break;
+	case 'C':
+		while (!(*cpu.C == value))
+			step();
+		break;
+	case 'D':
+		while (!(*cpu.D == value))
+			step();
+		break;
+	case 'E':
+		while (!(*cpu.E == value))
+			step();
+		break;
+	case 'H':
+		while (!(*cpu.H == value))
+			step();
+		break;
+	case 'L':
+		while (!(*cpu.L == value))
+			step();
+		break;
+	case 'P':
+		while (!(*cpu.PC == value))
+			step();
+		break;
+	default:
+		printf("Unknown register\n");
+	}
+}
+
 void debug(void)
 {
 	char cmd[16];
 	char tmp[16];
 	unsigned param;
-	/* unsigned param2; */
+	unsigned param2;
 
 	cursor();
 	if (fgets(cmd, 16, stdin) == NULL)
@@ -123,9 +167,13 @@ void debug(void)
 	} else if (!strcmp(cmd, "reg\n")) {
 		regs();
 	} else if (sscanf(cmd, "if %s\n", tmp) >= 1) {
-		if (!strcmp(tmp, "B = 0") || !strcmp(tmp, "B=0")) {
-			while (!*cpu.B == 0)
+		char reg;
+		if (sscanf(tmp, "%c=0x%X", &reg, &param) >= 2) {
+			continue_reg_breakpoint(reg, param);
+		} else if (sscanf(tmp, "0x%X=0x%X", &param, &param2) >= 2) {
+			while (read_memory(param) != param2) {
 				step();
+			}
 		}
 	} else {
 		printf("\tUnknown command\n");
