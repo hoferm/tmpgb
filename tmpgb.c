@@ -6,30 +6,30 @@
 
 #include "cpu.h"
 #include "debug.h"
+#include "display.h"
 #include "error.h"
 #include "memory.h"
-#include "display.h"
+#include "timer.h"
 
 #define READ_SIZE 0x4000
 
-static char *logfile;
-static int oflag;
+static int debug_enabled;
 
 static void usage(void)
 {
-	usagef("tmpgb [-o <file>] <file>");
+	usagef("tmpgb [-d] <file>");
 }
 
 static void load_rom(const char *rom)
 {
 	FILE *fp;
-	unsigned char buffer[READ_SIZE];
+	u8 buffer[READ_SIZE];
 	size_t nread;
 	int i = -1;
 
 	fp = fopen(rom, "rb");
 
-	if (fp == NULL)
+	if (!fp)
 		die_errno("could not open ROM: %s", rom);
 
 	while (!feof(fp)) {
@@ -60,14 +60,18 @@ static void run(void)
 	if (init_sdl() != 0)
 		die("Failed to create window");
 
-	draw_background();
+	init_timer();
 	setup_debug();
 
 	while (!quit) {
-		update_screen();
 		quit = handle_event();
-		debug();
-		/* fetch_opcode(); */
+		if (debug_enabled) {
+			debug();
+		} else {
+			update_timer();
+			update_screen();
+			fetch_opcode();
+		}
 	}
 }
 
@@ -81,17 +85,8 @@ static int handle_options(int *argc, char ***argv)
 		if (cmd[0] != '-')
 			break;
 
-		if (!strcmp(cmd, "-o")) {
-			oflag = 1;
-			if (*argc < 3) {
-				ret = -1;
-				break;
-			}
-
-			logfile = (*argv)[1];
-			(*argv)++;
-			(*argc)--;
-		}
+		if (!strcmp(cmd, "-d"))
+			debug_enabled = 1;
 		(*argv)++;
 		(*argc)--;
 	}
@@ -115,11 +110,8 @@ int main(int argc, char **argv)
 		usage();
 
 	rom = argv[0];
-
 	load_rom(rom);
-
 	run();
-
 	close_sdl();
 
 	return 0;
