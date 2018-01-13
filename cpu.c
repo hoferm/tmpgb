@@ -1879,13 +1879,15 @@ static void op0xC3(void)
 /* CALL NZ,nn */
 static void op0xC4(void)
 {
-	u8 low = PC & 0xFF;
-	u8 high = PC >> 8;
+	u8 low;
+	u8 high;
 	u16 address;
 
 	if (!get_flag(ZFLAG)) {
-		push_stack(low, high);
 		address = fetch_16bit_data();
+		low = PC;
+		high = PC >> 8;
+		push_stack(low, high);
 		PC = address;
 	}
 }
@@ -1944,13 +1946,15 @@ static void op0xCB(void)
 /* CALL Z,nn */
 static void op0xCC(void)
 {
-	u8 low = PC & 0xFF;
-	u8 high = PC >> 8;
+	u8 low;
+	u8 high;
 	u16 address;
 
 	if (get_flag(ZFLAG)) {
-		push_stack(low, high);
 		address = fetch_16bit_data();
+		low = PC;
+		high = PC >> 8;
+		push_stack(low, high);
 		PC = address;
 	}
 }
@@ -1958,9 +1962,9 @@ static void op0xCC(void)
 /* CALL nn */
 static void op0xCD(void)
 {
-	u8 low = PC & 0xFF;
-	u8 high = PC >> 8;
 	u16 address = fetch_16bit_data();
+	u8 low = PC;
+	u8 high = PC >> 8;
 
 	push_stack(low, high);
 
@@ -2020,13 +2024,15 @@ static void op0xD3(void)
 /* CALL NC,nn */
 static void op0xD4(void)
 {
-	u8 low = PC & 0xFF;
-	u8 high = PC >> 8;
+	u8 low;
+	u8 high;
 	u16 address;
 
 	if (!get_flag(CFLAG)) {
-		push_stack(low, high);
 		address = fetch_16bit_data();
+		low = PC;
+		high = PC >> 8;
+		push_stack(low, high);
 		PC = address;
 	}
 }
@@ -2092,13 +2098,15 @@ static void op0xDB(void)
 /* CALL C,nn */
 static void op0xDC(void)
 {
-	u8 low = PC & 0xFF;
-	u8 high = PC >> 8;
+	u8 low;
+	u8 high;
 	u16 address;
 
 	if (get_flag(CFLAG)) {
-		push_stack(low, high);
 		address = fetch_16bit_data();
+		low = PC;
+		high = PC >> 8;
+		push_stack(low, high);
 		PC = address;
 	}
 }
