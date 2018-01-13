@@ -14,10 +14,7 @@
 #define SCX 0xFF43
 #define LY 0xFF44
 
-#define BG_MAP_SIZE 256
-#define BG_MAP_START 0x9800
-#define BG_MAP_END 0x9BFF
-
+/* Sprite options */
 #define OBJ_BG_PRIORITY (1<<7)
 #define Y_FLIP (1<<6)
 #define X_FLIP (1<<5)
@@ -28,6 +25,7 @@ struct sprite {
 	u8 x;
 	u8 tile;
 	u8 flags;
+	u8 addr;
 };
 
 static u8 *vram;
@@ -68,7 +66,7 @@ static u8 extract_color(u8 lsb, u8 msb, int px)
 	return ((lsb >> px) & 0x1) + (((msb >> px) & 0x1) << 1);
 }
 
-static void tile_data(u8 *tile, u8 tile_nr)
+static void tile_data(u8 *line, u8 tile_nr, int tline)
 {
 	int i;
 	int start = tile_nr * 16;
@@ -80,59 +78,109 @@ static void tile_data(u8 *tile, u8 tile_nr)
 		offset = 0x800;
 	}
 
-	lsb = vram[start + offset];
-	msb = vram[start + offset + 1];
+	lsb = vram[start + offset + (tline * 2)];
+	msb = vram[start + offset + (tline * 2) + 1];
 
 	for (i = 7; i >= 0; i--) {
 		color = extract_color(lsb, msb, i);
 		if (i == 0)
-			tile[7] = bg_palette[color];
+			line[7] = bg_palette[color];
 		else
-			tile[i & 7] = bg_palette[color];
+			line[i % 7] = bg_palette[color];
 	}
 }
 
-static void sprites(struct sprite *sp_array, u8 ly, int *size)
-{
-	struct sprite sp;
-	int i;
-	const int range = 0xA0;
-
-	for (i = 0; i < range; i = i + 4) {
-		sp.y = vram[i];
-		sp.x = vram[i + 1];
-		sp.tile = vram[i + 2];
-		sp.flags = vram[i + 3];
-
-		if (sp.y >= ly && (sp.y - 16) <= ly) {
-			sp_array[*size] = sp;
-			(*size)++;
-		}
-	}
-}
-
-static void draw_line(u8 *line, u8 ly)
+static void draw_tiles(u8 *line, u8 ly)
 {
 	u8 scy = read_memory(SCY) + ly;
 	u8 scx = read_memory(SCX);
-	int i;
 	u8 tile_nr;
 	int offset = 0x1800 + (scy * (WIDTH / 8));
-	struct sprite sp[40];
-	int size = 0;
-
-	sprites(sp, ly, &size);
+	int i;
 
 	if (get_bit(lcdc_register, 3))
 		offset += 0x400;
 
 	for (i = scx; i < WIDTH / 8; i++) {
 		tile_nr = vram[i + offset];
-		tile_data(line, tile_nr);
+		tile_data(line, tile_nr, ly % 8);
+		line = line + 8;
 	}
 }
 
-/* TODO: Use enum for return */
+static int sprites(struct sprite *sp_array, u8 ly)
+{
+	struct sprite sp;
+	int i;
+	const int range = 0xA0;
+	int size = 0;
+
+	for (i = 0; i < range; i = i + 4) {
+		sp.y = vram[i];
+		sp.x = vram[i + 1];
+		sp.tile = vram[i + 2];
+		sp.flags = vram[i + 3];
+		sp.addr = i;
+
+		if (sp.y >= ly && (sp.y - 16) <= ly) {
+			sp_array[size] = sp;
+			size++;
+		}
+	}
+
+	return size;
+}
+
+static int cmp_sprites(const void *p1, const void *p2)
+{
+	struct sprite s1 = *(struct sprite *) p1;
+	struct sprite s2 = *(struct sprite *) p2;
+
+	if (s1.x < s2.x)
+		return -1;
+	else if (s1.x > s2.x)
+		return 1;
+	else if (s1.addr < s2.addr)
+		return -1;
+	else if (s1.addr > s2.addr)
+		return 1;
+	else
+		return 0;
+}
+
+static void draw_sprites(u8 *line, u8 ly)
+{
+	int offset = 0;
+	int i;
+	struct sprite sp[40];
+	int size;
+	int x = 0;
+
+	size = sprites(sp, ly);
+
+	if (size > 10) {
+		offset = size - 10;
+		size = 10;
+	}
+
+	qsort(&sp[offset], size, sizeof(struct sprite), cmp_sprites);
+	for (x = 0; x < WIDTH; x++) {
+		for (i = offset; i < size; i++) {
+			int tmp = x - sp[i].x;
+			if (tmp < 0)
+				tmp *= -1;
+			if (tmp < 8)
+				tile_data(line, sp[i].tile, ly % 8);
+		}
+	}
+}
+
+static void draw_line(u8 *line, u8 ly)
+{
+	draw_tiles(line, ly);
+	draw_sprites(line, ly);
+}
+
 int draw_scanline(u8 *line)
 {
 	u8 stat = read_memory(STAT);
