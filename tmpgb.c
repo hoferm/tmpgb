@@ -49,10 +49,9 @@ static void load_rom(const char *rom)
 
 static void run(void)
 {
-	int ret;
 	int quit = 0;
 
-	if ((ret = init_memory()) != 0)
+	if (init_memory() != 0)
 		die("invalid rom");
 
 	init_cpu();
