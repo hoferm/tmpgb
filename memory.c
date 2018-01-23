@@ -47,7 +47,6 @@ static struct mem {
 static int cmp_nintendo_logo(void)
 {
 	int i;
-	int ret = 1;
 
 	u8 nintendo_logo[48] = {
 		0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B,
@@ -58,14 +57,11 @@ static int cmp_nintendo_logo(void)
 		0xDD, 0xDC, 0x99, 0x9F, 0xBB, 0xB9, 0x33, 0x3E
 	};
 
-	for (i = 0; i < 48; ++i) {
-		if (memory.rom[i + N_LOGO_OFFSET] != nintendo_logo[i]) {
-			ret = 0;
-			break;
-		}
-	}
+	for (i = 0; i < 48; ++i)
+		if (memory.rom[i + N_LOGO_OFFSET] != nintendo_logo[i])
+			return 0;
 
-	return ret;
+	return 1;
 }
 
 static int check_complement(void)
@@ -278,6 +274,8 @@ int init_memory(void)
 
 	if (!check_complement())
 		return -1;
+
+	write_memory(0xFF00, 0xFF);
 
 	write_memory(0xFF05, 0x00);
 	write_memory(0xFF06, 0x00);
