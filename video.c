@@ -192,9 +192,9 @@ int draw_scanline(u8 *line)
 		return -1;
 
 	ly_count += inc;
-	if (ly_count < 252)
+	if (ly_count < 456)
 		return -1;
-	ly_count -= 252;
+	ly_count -= 456;
 
 	if (ly >= 144)
 		request_interrupt(INT_VBLANK);
