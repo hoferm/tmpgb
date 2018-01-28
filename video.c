@@ -75,7 +75,10 @@ static void tile_data(u8 *line, u8 tile_nr, int tline)
 	int offset = 0;
 
 	if (!get_bit(lcdc_register, 4)) {
-		offset = 0x800;
+		if (tile_nr < 128)
+			offset = 0x1000;
+		else
+			offset = 0x800;
 	}
 
 	lsb = vram[start + offset + (tline * 2)];
