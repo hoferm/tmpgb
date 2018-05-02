@@ -4,8 +4,20 @@
 #define WIDTH 160
 #define HEIGHT 144
 
-void init_vram(void);
+enum screen_status {
+	LCD_OFF = 1
+};
 
-int draw_scanline(unsigned char *line);
-void update_registers(void);
+enum px_type {
+	BG,
+	SPRITE,
+	WINDOW
+};
+
+struct pixel {
+	int color;
+	enum px_type type;
+};
+
+int draw(u8 *screen);
 #endif

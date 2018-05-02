@@ -25,7 +25,6 @@ int init_sdl(void)
 		ret = -1;
 		goto out;
 	}
-
 	window = SDL_CreateWindow("tmpgb", 0, 0, WIDTH, HEIGHT, SDL_WINDOW_SHOWN);
 	if (!window) {
 		ret = -1;
@@ -36,9 +35,6 @@ int init_sdl(void)
 		ret = -1;
 		goto out;
 	}
-
-	init_vram();
-
 out:
 	if (ret == -1)
 		errorf(SDL_GetError());
@@ -63,8 +59,7 @@ void update_screen(void)
 	r.w = 1;
 	r.h = 1;
 
-	update_registers();
-	if (draw_scanline(line) == -1)
+	if (draw(line) == -1)
 		return;
 
 	for (i = 0; i < WIDTH; i++) {
@@ -87,10 +82,8 @@ void close_sdl(void)
 {
 	SDL_DestroyRenderer(renderer);
 	renderer = NULL;
-
 	SDL_DestroyWindow(window);
 	window = NULL;
-
 	SDL_Quit();
 }
 
