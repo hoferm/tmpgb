@@ -5,6 +5,7 @@
 
 #include "cpu.h"
 #include "display.h"
+#include "interrupt.h"
 #include "memory.h"
 #include "timer.h"
 #include "opnames.h"
@@ -67,8 +68,18 @@ static void flags(void)
 	printf("Z: %d, N: %d, H: %d, C: %d\n", z, n, h, c);
 }
 
+static void intr_status(void)
+{
+	u8 ly = read_memory(0xFF44);
+	int ime = get_ime();
+
+	printf("ly: %d\n", ly);
+	printf("ime: %d\n", ime);
+}
+
 static void regs(void)
 {
+	intr_status();
 	flags();
 	printf("\tB: %.2X, C: %.2X\n", *cpu.B, *cpu.C);
 	printf("\tD: %.2X, E: %.2X\n", *cpu.D, *cpu.E);
@@ -147,7 +158,7 @@ void debug(void)
 	if (fgets(cmd, 16, stdin) == NULL)
 		die("debug: could not read from stdin");
 
-	if (!strcmp(cmd, "s\n")) {
+	if (!strcmp(cmd, "s\n") || !strcmp(cmd, "\n")) {
 		step();
 	} else if (sscanf(cmd, "d %ud\n", &param) >= 1) {
 		disassemble(param);
@@ -171,9 +182,8 @@ void debug(void)
 		if (sscanf(tmp, "%c=0x%X", &reg, &param) >= 2) {
 			continue_reg_breakpoint(reg, param);
 		} else if (sscanf(tmp, "0x%X=0x%X", &param, &param2) >= 2) {
-			while (read_memory(param) != param2) {
+			while (read_memory(param) != param2)
 				step();
-			}
 		}
 	} else {
 		printf("\tUnknown command\n");
