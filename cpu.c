@@ -26,8 +26,6 @@ static u8 A;
 static u16 PC;
 static u16 SP;
 
-static u64 opcount = 0;
-
 static int clock_count = 0;
 static int old_clock_count = 0;
 
@@ -111,7 +109,6 @@ static void execute_opcode(u8 opcode)
 
 	if (disable_interrupt)
 		set_ime(0);
-	opcount++;
 	tick();
 }
 
