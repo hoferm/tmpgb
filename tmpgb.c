@@ -58,8 +58,6 @@ static void run(void)
 
 	if (init_sdl() != 0)
 		die("Failed to create window");
-
-	init_timer();
 	setup_debug();
 
 	while (!quit) {

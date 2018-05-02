@@ -242,31 +242,6 @@ u8 read_memory(u16 address)
 	return ret;
 }
 
-u8 *get_vram(void)
-{
-	return memory.vram;
-}
-
-u8 *get_div(void)
-{
-	return &memory.io_reg[4];
-}
-
-u8 *get_tima(void)
-{
-	return &memory.io_reg[5];
-}
-
-u8 *get_tma(void)
-{
-	return &memory.io_reg[6];
-}
-
-u8 *get_tac(void)
-{
-	return &memory.io_reg[7];
-}
-
 int init_memory(void)
 {
 	if (!cmp_nintendo_logo())
