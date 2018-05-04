@@ -21,6 +21,17 @@ struct sprite {
 	int addr;
 };
 
+enum px_type {
+	BG,
+	SPRITE,
+	WINDOW
+};
+
+struct pixel {
+	int color;
+	enum px_type type;
+};
+
 static struct sprite spr[40];
 static int spr_size;
 static int spr_height;
@@ -133,6 +144,12 @@ loop_end:
 	}
 }
 
+static void set_statmode(u8 stat, u8 statmode)
+{
+	stat = (stat & (1U >> 2)) + statmode;
+	write_memory(0xFF41, stat);
+}
+
 static void update_registers(void)
 {
 	lcdc = read_memory(0xFF40);
@@ -159,23 +176,39 @@ int draw(u8 *scr)
 	switch (stat_mode) {
 	/* H-Blank */
 	case 0:
+		if (clock >= 204) {
+			write_memory(0xFF44, ly+1);
+			set_statmode(stat, 1);
+			clock -= 204;
+		}
 		break;
 	/* V-Blank */
 	case 1:
+		if (clock >= 456) {
+			ly++;
+			write_memory(0xFF44, ly);
+			if (ly > 154) {
+				write_memory(0xFF44, 1);
+				set_statmode(stat, 2);
+			}
+			clock -= 456;
+		}
 		break;
 	/* OAM Search */
 	case 2:
 		if (clock >= 80) {
 			oam_search();
-			stat_mode = 3;
-			stat = (stat & (1U >> 2)) + stat_mode;
-			write_memory(0xFF41, stat);
+			set_statmode(stat, 3);
 			clock -= 80;
 		}
 		break;
 	/* LCD Transfer */
 	case 3:
-		pixel_transfer();
+		if (clock >= 172) {
+			pixel_transfer();
+			set_statmode(stat, 0);
+			clock -= 172;
+		}
 		break;
 	}
 	return 0;
