@@ -6,12 +6,10 @@
 #include "memory.h"
 #include "video.h"
 
-static int clock;
-static u8 lcdc;
-static u8 ly;
-
-static int bg_map;
-static u8 *screen;
+#define OBJ_BG_PRIORITY (1<<7)
+#define YFLIP (1<<6)
+#define XFLIP (1<<5)
+#define PALETTENR (1<<4)
 
 struct sprite {
 	u8 y;
@@ -31,6 +29,15 @@ struct pixel {
 	int color;
 	enum px_type type;
 };
+
+static int clock;
+static u8 lcdc;
+static u8 ly;
+static int bg_map;
+static u8 *screen;
+static int bg_palette[4] = { 0, 1, 2, 3 };
+static int obj_palette_0[4] = { 0, 1, 2, 3 };
+static int obj_palette_1[4] = { 0, 1, 2, 3 };
 
 static struct sprite spr[40];
 static int spr_size;
@@ -57,9 +64,6 @@ static void oam_search(void)
 {
 	int i;
 	struct sprite sp;
-
-	if (clock < 80)
-		return;
 
 	for (i = 0xFF00; i < 0xFFA0; i += 4) {
 		u8 y = read_memory(i);
@@ -118,11 +122,13 @@ static void pixel_transfer(void)
 		u8 yoff = ly % 8;
 		if (i == 0) {
 			px.color = tiledata(tilenr, scx % 8, yoff);
+			px.color = bg_palette[px.color];
 			px.type = BG;
 		} else if (xoff == 0) {
 			tilenr = read_memory(offset + i / 8);
 		}
 		px.color = tiledata(tilenr, xoff, yoff);
+		px.color = bg_palette[px.color];
 		px.type = BG;
 		if (!get_bit(lcdc, 1))
 			goto loop_end;
@@ -132,7 +138,10 @@ static void pixel_transfer(void)
 				yoff = (spr_height - 1) - (spr[j].y - ly);
 				color = tiledata(spr[j].tilenr, xoff, yoff);
 				if (color != 0) {
-					px.color = color;
+					if (spr[j].flags & PALETTENR)
+						px.color = obj_palette_1[color];
+					else
+						px.color = obj_palette_0[color];
 					px.type = SPRITE;
 				}
 				break;
@@ -144,10 +153,26 @@ loop_end:
 	}
 }
 
-static void set_statmode(u8 stat, u8 statmode)
+static void update_palette(void)
 {
-	stat = (stat & (1U >> 2)) + statmode;
-	write_memory(0xFF41, stat);
+	u8 bgp_data = read_memory(0xFF47);
+	u8 obj_data_0 = read_memory(0xFF48);
+	u8 obj_data_1 = read_memory(0xFF49);
+
+	bg_palette[0] = bgp_data & 0x3;
+	bg_palette[1] = (bgp_data >> 2) & 0x3;
+	bg_palette[2] = (bgp_data >> 4) & 0x3;
+	bg_palette[3] = (bgp_data >> 6) & 0x3;
+
+	obj_palette_0[0] = obj_data_0 & 0x3;
+	obj_palette_0[1] = (obj_data_0 >> 2) & 0x3;
+	obj_palette_0[2] = (obj_data_0 >> 4) & 0x3;
+	obj_palette_0[3] = (obj_data_0 >> 6) & 0x3;
+
+	obj_palette_1[0] = obj_data_1 & 0x3;
+	obj_palette_1[1] = (obj_data_1 >> 2) & 0x3;
+	obj_palette_1[2] = (obj_data_1 >> 4) & 0x3;
+	obj_palette_1[3] = (obj_data_1 >> 6) & 0x3;
 }
 
 static void update_registers(void)
@@ -156,11 +181,18 @@ static void update_registers(void)
 	ly = read_memory(0xFF44);
 	spr_height = (get_bit(lcdc, 2)) ? 16 : 8;
 	clock += (cpu_cycle() - old_cpu_cycle());
+	update_palette();
 
 	if (get_bit(lcdc, 3))
 		bg_map = 0x9C00;
 	else
 		bg_map = 0x9800;
+}
+
+static void set_statmode(u8 stat, u8 statmode)
+{
+	stat = (stat & (1U << 2)) + statmode;
+	write_memory(0xFF41, stat);
 }
 
 int draw(u8 *scr)
