@@ -107,15 +107,36 @@ static u8 tiledata(u8 tilenr, u8 xoff, u8 yoff)
 	return extract_color(lsb, msb, xoff);
 }
 
+static int spritedata(int x)
+{
+	int i, color;
+	u8 xoff, yoff;
+
+	for (i = 0; i < 10; i++) {
+		if (spr[i].x - 8 <= (x+1) && spr[i].x >= (i+1)) {
+			xoff = 7 - (spr[i].x - x);
+			yoff = (spr_height - 1) - (spr[i].y - ly);
+			color = tiledata(spr[i].tilenr, xoff, yoff);
+			if (color == 0)
+				break;
+			if (spr[i].flags & PALETTENR)
+				return obj_palette_1[color];
+			else
+				return obj_palette_0[color];
+		}
+	}
+	return -1;
+}
+
 static void pixel_transfer(void)
 {
 	u8 scy = read_memory(0xFF42);
 	u8 scx = read_memory(0xFF43);
 	int offset = bg_map + scx / 8 + (WIDTH * (ly + scy)) / 8;
-	int i, j;
+	int i;
 	int tilenr = read_memory(offset);
 	struct pixel px;
-	u8 color;
+	int color;
 
 	for (i = 0; i < WIDTH; i++) {
 		u8 xoff = i % 8;
@@ -130,24 +151,13 @@ static void pixel_transfer(void)
 		px.color = tiledata(tilenr, xoff, yoff);
 		px.color = bg_palette[px.color];
 		px.type = BG;
-		if (!get_bit(lcdc, 1))
-			goto loop_end;
-		for (j = 0; j < 10; j++) {
-			if (spr[j].x - 8 <= (i+1) && spr[j].x >= (i+1)) {
-				xoff = 7 - (spr[j].x - i);
-				yoff = (spr_height - 1) - (spr[j].y - ly);
-				color = tiledata(spr[j].tilenr, xoff, yoff);
-				if (color != 0) {
-					if (spr[j].flags & PALETTENR)
-						px.color = obj_palette_1[color];
-					else
-						px.color = obj_palette_0[color];
-					px.type = SPRITE;
-				}
-				break;
+		if (get_bit(lcdc, 1)) {
+			color = spritedata(i);
+			if (color >= 0) {
+				px.color = color;
+				px.type = SPRITE;
 			}
 		}
-loop_end:
 		*screen = px.color;
 		screen++;
 	}
