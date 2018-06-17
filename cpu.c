@@ -49,8 +49,8 @@ int old_cpu_cycle(void)
 
 static void reset_clock_count(void)
 {
-	clock_count -= 1024;
-	old_clock_count -= 1024;
+	clock_count = 0;
+	old_clock_count = 0;
 }
 
 static void push_stack(u8 low, u8 high)
@@ -140,7 +140,7 @@ static u8 get_flag(u8 flag)
 	return (F & flag) ? 1 : 0;
 }
 
-static u8 inc_8bit(u8 reg)
+static u8 inc(u8 reg)
 {
 	reset_flag(ZFLAG);
 	reset_flag(HFLAG);
@@ -156,7 +156,7 @@ static u8 inc_8bit(u8 reg)
 	return reg;
 }
 
-static u8 dec_8bit(u8 reg)
+static u8 dec(u8 reg)
 {
 	reset_flag(HFLAG);
 	reset_flag(ZFLAG);
@@ -522,13 +522,13 @@ static void op0x03(void)
 /* INC B */
 static void op0x04(void)
 {
-	B = inc_8bit(B);
+	B = inc(B);
 }
 
 /* DEC B */
 static void op0x05(void)
 {
-	B = dec_8bit(B);
+	B = dec(B);
 }
 
 /* LD B,n */
@@ -592,13 +592,13 @@ static void op0x0B(void)
 /* INC C */
 static void op0x0C(void)
 {
-	C = inc_8bit(C);
+	C = inc(C);
 }
 
 /* DEC C */
 static void op0x0D(void)
 {
-	C = dec_8bit(C);
+	C = dec(C);
 }
 
 /* LD C,n */
@@ -656,13 +656,13 @@ static void op0x13(void)
 /* INC D */
 static void op0x14(void)
 {
-	D = inc_8bit(D);
+	D = inc(D);
 }
 
 /* DEC D */
 static void op0x15(void)
 {
-	D = dec_8bit(D);
+	D = dec(D);
 }
 
 /* LD D,n */
@@ -726,13 +726,13 @@ static void op0x1B(void)
 /* INC E */
 static void op0x1C(void)
 {
-	E = inc_8bit(E);
+	E = inc(E);
 }
 
 /* DEC E */
 static void op0x1D(void)
 {
-	E = dec_8bit(E);
+	E = dec(E);
 }
 
 /* LD E,n */
@@ -794,13 +794,13 @@ static void op0x23(void)
 /* INC H */
 static void op0x24(void)
 {
-	H = inc_8bit(H);
+	H = inc(H);
 }
 
 /* DEC H */
 static void op0x25(void)
 {
-	H = dec_8bit(H);
+	H = dec(H);
 }
 
 /* LD H,n */
@@ -857,13 +857,13 @@ static void op0x2B(void)
 /* INC L */
 static void op0x2C(void)
 {
-	L = inc_8bit(L);
+	L = inc(L);
 }
 
 /* DEC L */
 static void op0x2D(void)
 {
-	L = dec_8bit(L);
+	L = dec(L);
 }
 
 /* LD L,n */
@@ -924,7 +924,7 @@ static void op0x34(void)
 	u16 tmp = H;
 	tmp <<= 8;
 	tmp += L;
-	write_memory(tmp, inc_8bit(read_memory(tmp)));
+	write_memory(tmp, inc(read_memory(tmp)));
 }
 
 /* DEC (HL) */
@@ -934,7 +934,7 @@ static void op0x35(void)
 	tmp <<= 8;
 	tmp += L;
 
-	write_memory(tmp, dec_8bit(read_memory(tmp)));
+	write_memory(tmp, dec(read_memory(tmp)));
 
 }
 
@@ -992,13 +992,13 @@ static void op0x3B(void)
 /* INC A */
 static void op0x3C(void)
 {
-	A = inc_8bit(A);
+	A = inc(A);
 }
 
 /* DEC A */
 static void op0x3D(void)
 {
-	A = dec_8bit(A);
+	A = dec(A);
 }
 
 /* LD A,n */
