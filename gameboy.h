@@ -1,9 +1,12 @@
 #ifndef GAMEBOY_H
 #define GAMEBOY_H
 
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned long u64;
+#include <stdint.h>
+#include <stdlib.h>
+
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint64_t u64;
 
 void usagef(const char *err, ...);
 void die_errno(const char *err, ...);
