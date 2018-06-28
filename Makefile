@@ -1,6 +1,6 @@
 CC = cc
 RM = rm -f
-CFLAGS = -Wall -Wextra -std=c99 -pedantic -g -O2
+CFLAGS = -Wall -Wextra -std=c99 -pedantic -g
 CFLAGS += -Werror \
 	-Wstrict-prototypes \
 	-Wdeclaration-after-statement \
@@ -27,4 +27,4 @@ $(BUILDDIR):
 clean:
 	$(RM) tmpgb $(BUILDDIR)/*.o
 
-.PHONY: clean all cscope tags
+.PHONY: clean all
