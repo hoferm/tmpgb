@@ -13,7 +13,7 @@ static int palette[4] = { 0xEEEEEE, 0xB2B2B2, 0x666666, 0x191919 };
 
 static void clear(void)
 {
-	SDL_SetRenderDrawColor(renderer, 235, 183, 139, 255);
+	SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
 	SDL_RenderClear(renderer);
 }
 
@@ -43,9 +43,16 @@ out:
 
 static void convert_palette(int *rgb, int hex)
 {
-	rgb[0] = hex >> 16;
+	rgb[0] = hex >> 16 & 0xFF;
 	rgb[1] = (hex >> 8) & 0xFF;
 	rgb[2] = hex & 0xFF;
+}
+
+/* Disable display */
+void draw_background(void)
+{
+	clear();
+	SDL_RenderPresent(renderer);
 }
 
 void update_screen(void)
@@ -54,27 +61,20 @@ void update_screen(void)
 	int i;
 	int color[3];
 	u8 ly = read_memory(0xFF44);
-	SDL_Rect r;
-	r.y = ly;
-	r.w = 1;
-	r.h = 1;
+	int ret;
 
-	if (draw(line) == -1)
+	if ((ret = draw(line)) == LCD_OFF) {
+		draw_background();
 		return;
+	} else if (ret != LCD_DRAWN) {
+		return;
+	}
 
 	for (i = 0; i < WIDTH; i++) {
 		convert_palette(color, palette[line[i]]);
-		r.x = i;
 		SDL_SetRenderDrawColor(renderer, color[0], color[1], color[2], 255);
-		SDL_RenderFillRect(renderer, &r);
+		SDL_RenderDrawPoint(renderer, i, ly);
 	}
-	SDL_RenderPresent(renderer);
-}
-
-/* Disable display */
-void draw_background(void)
-{
-	clear();
 	SDL_RenderPresent(renderer);
 }
 

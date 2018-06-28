@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "gameboy.h"
 
@@ -40,7 +41,6 @@ static int obj_palette_0[4] = { 0, 1, 2, 3 };
 static int obj_palette_1[4] = { 0, 1, 2, 3 };
 
 static struct sprite spr[40];
-static int spr_size;
 static int spr_height;
 
 static int cmp_sprites(const void *p1, const void *p2)
@@ -64,10 +64,11 @@ static void oam_search(void)
 {
 	int i;
 	struct sprite sp;
+	int spr_size = 0;
 
 	for (i = 0xFF00; i < 0xFFA0; i += 4) {
 		u8 y = read_memory(i);
-		if (ly < y && ly > (y - spr_height)) {
+		if (ly <= y && ly > (y - spr_height)) {
 			sp.y = read_memory(i);
 			sp.x = read_memory(i + 1);
 			sp.tilenr = read_memory(i + 2);
@@ -90,17 +91,19 @@ static u8 extract_color(u8 lsb, u8 msb, int px)
 	return ((lsb >> px) & 0x1) + (((msb >> px) & 0x1) << 1);
 }
 
-static u8 tiledata(u8 tilenr, u8 xoff, u8 yoff)
+static u8 tiledata(u8 tilenr, u8 xoff, u8 yoff, enum px_type type)
 {
-	int offset = tilenr * 16 - 16 + (2 * yoff);
+	int offset = (tilenr * 16) + (2 * yoff);
 	int lsb, msb;
 	u16 addr = 0x8000 + offset;
 
-	if (!get_bit(lcdc, 4)) {
-		if (tilenr < 128)
-			addr = 0x9000 + offset;
-		else
-			addr = 0x8800 + offset;
+	if (type != SPRITE) {
+		if (!get_bit(lcdc, 4)) {
+			if (tilenr < 128)
+				addr = 0x9000 + offset;
+			else
+				addr = 0x8800 + ((tilenr - 128) * 16) + (2 * yoff);
+		}
 	}
 	lsb = read_memory(addr);
 	msb = read_memory(addr + 1);
@@ -113,10 +116,10 @@ static int spritedata(int x)
 	u8 xoff, yoff;
 
 	for (i = 0; i < 10; i++) {
-		if (spr[i].x - 8 <= (x+1) && spr[i].x >= (i+1)) {
-			xoff = 7 - (spr[i].x - x);
-			yoff = (spr_height - 1) - (spr[i].y - ly);
-			color = tiledata(spr[i].tilenr, xoff, yoff);
+		if (spr[i].x - 8 <= x && spr[i].x >= (x+1)) {
+			xoff = 8 - (spr[i].x - x);
+			yoff = (spr_height) - (spr[i].y - ly);
+			color = tiledata(spr[i].tilenr, xoff, yoff, SPRITE);
 			if (color == 0)
 				break;
 			if (spr[i].flags & PALETTENR)
@@ -132,23 +135,22 @@ static void pixel_transfer(void)
 {
 	u8 scy = read_memory(0xFF42);
 	u8 scx = read_memory(0xFF43);
-	int offset = bg_map + scx / 8 + (WIDTH * (ly + scy)) / 8;
+	u8 line_offset = ly + scy;
+	int offset = bg_map + scx / 8 + (32 * (line_offset / 8));
 	int i;
 	int tilenr = read_memory(offset);
 	struct pixel px;
 	int color;
+	u8 yoff = (scy + ly) % 8;
 
 	for (i = 0; i < WIDTH; i++) {
-		u8 xoff = i % 8;
-		u8 yoff = ly % 8;
-		if (i == 0) {
-			px.color = tiledata(tilenr, scx % 8, yoff);
-			px.color = bg_palette[px.color];
-			px.type = BG;
-		} else if (xoff == 0) {
+		u8 xoff = (i + scx) % 8;
+		/* printf("offset: %X, ly:%d, scx: %d, scy: %d, loff: %d, xoff: %d, yoff: %d, i: %d\n", */
+		/* 		offset, ly, scx, scy, line_offset, xoff, yoff, i); */
+		if (xoff == 0)
 			tilenr = read_memory(offset + i / 8);
-		}
-		px.color = tiledata(tilenr, xoff, yoff);
+
+		px.color = tiledata(tilenr, xoff, yoff, BG);
 		px.color = bg_palette[px.color];
 		px.type = BG;
 		if (get_bit(lcdc, 1)) {
@@ -158,8 +160,7 @@ static void pixel_transfer(void)
 				px.type = SPRITE;
 			}
 		}
-		*screen = px.color;
-		screen++;
+		screen[i] = px.color;
 	}
 }
 
@@ -209,6 +210,7 @@ int draw(u8 *scr)
 {
 	u8 stat = read_memory(0xFF41);
 	u8 stat_mode = stat & 0x3;
+	int ret = 0;
 	screen = scr;
 	update_registers();
 
@@ -219,21 +221,24 @@ int draw(u8 *scr)
 	/* H-Blank */
 	case 0:
 		if (clock >= 204) {
-			write_memory(0xFF44, ly+1);
-			set_statmode(stat, 1);
-			clock -= 204;
+			write_ly(ly+1);
+			if (ly == 143)
+				set_statmode(stat, 1);
+			else
+				set_statmode(stat, 2);
+			clock = 0;
 		}
 		break;
 	/* V-Blank */
 	case 1:
 		if (clock >= 456) {
 			ly++;
-			write_memory(0xFF44, ly);
+			write_ly(ly);
 			if (ly > 154) {
-				write_memory(0xFF44, 1);
+				write_ly(0);
 				set_statmode(stat, 2);
 			}
-			clock -= 456;
+			clock = 0;
 		}
 		break;
 	/* OAM Search */
@@ -241,7 +246,7 @@ int draw(u8 *scr)
 		if (clock >= 80) {
 			oam_search();
 			set_statmode(stat, 3);
-			clock -= 80;
+			clock = 0;
 		}
 		break;
 	/* LCD Transfer */
@@ -249,9 +254,10 @@ int draw(u8 *scr)
 		if (clock >= 172) {
 			pixel_transfer();
 			set_statmode(stat, 0);
-			clock -= 172;
+			clock = 0;
+			ret = LCD_DRAWN;
 		}
 		break;
 	}
-	return 0;
+	return ret;
 }

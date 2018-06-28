@@ -28,7 +28,7 @@ static struct mem {
 	u8 vram[0x2000]; /* 0x8000 - 0x9FFF */
 	u8 ram_bank[16][0x2000]; /* 0xA000 - 0xBFFF */
 	u8 wram[0x2000]; /* 0xC000 - 0xDFFF */
-	u8 sprite_table[0x10];
+	u8 sprite_table[0xA0];
 	u8 io_reg[0x80];
 	u8 hram[0x70];
 
@@ -164,7 +164,10 @@ void write_memory(u16 address, u8 value)
 		} else if (address <= 0xFEFF) {
 		} else if (address <= 0xFF7F) {
 			offset = (address - MEM_IO_REGISTER);
-			memory.io_reg[offset] = value;
+			if (address == 0xFF44)
+				memory.io_reg[offset] = 0;
+			else
+				memory.io_reg[offset] = value;
 		} else if (address <= 0xFFFE) {
 			offset = (address - MEM_HIGH_RAM);
 			memory.hram[offset] = value;
@@ -242,6 +245,11 @@ u8 read_memory(u16 address)
 	return ret;
 }
 
+void write_ly(u8 v)
+{
+	memory.io_reg[0x44] = v;
+}
+
 int init_memory(void)
 {
 	if (!cmp_nintendo_logo())
@@ -274,6 +282,7 @@ int init_memory(void)
 	write_memory(0xFF25, 0xF3);
 	write_memory(0xFF26, 0xF1);
 	write_memory(0xFF40, 0x91);
+	/* write_memory(0xFF41, 0x02); */
 	write_memory(0xFF42, 0x00);
 	write_memory(0xFF43, 0x00);
 	write_memory(0xFF45, 0x00);
