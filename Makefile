@@ -7,7 +7,7 @@ CFLAGS += -Werror \
 	-Wno-format-zero-length \
 	-Wold-style-definition \
 	-Wvla
-LDFLAGS = -lSDL2
+LDFLAGS = -LSDL2 -lSDL2
 BUILDDIR = obj
 
 QUIET_CC = @echo '   ' CC $@;
