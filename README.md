@@ -1,2 +1,4 @@
 # tmpgb
-Useless GameBoy emulator written in C
+Gameboy emulator written in C.
+
+## WIP!
