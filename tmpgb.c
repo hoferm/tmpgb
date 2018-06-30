@@ -13,8 +13,6 @@
 
 #define READ_SIZE 0x4000
 
-static int debug_enabled;
-
 static void usage(void)
 {
 	usagef("tmpgb [-d] <file>");
@@ -62,7 +60,7 @@ static void run(void)
 
 	while (!quit) {
 		quit = handle_event();
-		if (debug_enabled) {
+		if (debug_enabled()) {
 			debug();
 		} else {
 			update_timer();
@@ -83,7 +81,7 @@ static int handle_options(int *argc, char ***argv)
 			break;
 
 		if (!strcmp(cmd, "-d"))
-			debug_enabled = 1;
+			enable_debug();
 		(*argv)++;
 		(*argc)--;
 	}

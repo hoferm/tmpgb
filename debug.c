@@ -11,6 +11,7 @@
 #include "opnames.h"
 
 static struct cpu_info cpu;
+static int enabled;
 
 static void cursor(void)
 {
@@ -189,6 +190,16 @@ void debug(void)
 		printf("\tUnknown command\n");
 		return;
 	}
+}
+
+void enable_debug(void)
+{
+	enabled = 1;
+}
+
+int debug_enabled(void)
+{
+	return enabled;
 }
 
 void setup_debug(void)

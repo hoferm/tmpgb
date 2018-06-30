@@ -4,12 +4,13 @@
 #include "gameboy.h"
 
 #include "error.h"
+#include "debug.h"
 #include "memory.h"
 #include "video.h"
 
 static SDL_Window *window;
 static SDL_Renderer *renderer;
-static int palette[4] = { 0xEEEEEE, 0xB2B2B2, 0x666666, 0x191919 };
+static int palette[4] = { 0xCCCCCC, 0xB2B2B2, 0x666666, 0x191919 };
 
 static void clear(void)
 {
@@ -96,7 +97,8 @@ int handle_event(void)
 			return 1;
 		} else if (e.type == SDL_KEYDOWN) {
 			switch (e.key.keysym.sym) {
-
+			case SDLK_d:
+				enable_debug();
 			}
 		}
 	}
