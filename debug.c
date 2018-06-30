@@ -111,34 +111,42 @@ static void view_mem(u16 start, u16 end)
 static void continue_reg_breakpoint(char reg, unsigned value)
 {
 	switch (reg) {
+	case 'a':
 	case 'A':
 		while (!(*cpu.A == value))
 			step();
 		break;
+	case 'b':
 	case 'B':
 		while (!(*cpu.B == value))
 			step();
 		break;
+	case 'c':
 	case 'C':
 		while (!(*cpu.C == value))
 			step();
 		break;
+	case 'd':
 	case 'D':
 		while (!(*cpu.D == value))
 			step();
 		break;
+	case 'e':
 	case 'E':
 		while (!(*cpu.E == value))
 			step();
 		break;
+	case 'h':
 	case 'H':
 		while (!(*cpu.H == value))
 			step();
 		break;
+	case 'l':
 	case 'L':
 		while (!(*cpu.L == value))
 			step();
 		break;
+	case 'p':
 	case 'P':
 		while (!(*cpu.PC == value))
 			step();
