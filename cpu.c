@@ -765,8 +765,6 @@ static void op0x20(void)
 	if (!get_flag(ZFLAG)) {
 		PC += tmp;
 		tick(1);
-	} else {
-		PC++;
 	}
 }
 
@@ -830,8 +828,6 @@ static void op0x28(void)
 	if (get_flag(ZFLAG)) {
 		PC += tmp;
 		tick(1);
-	} else {
-		PC++;
 	}
 }
 
@@ -896,8 +892,6 @@ static void op0x30(void)
 	if (!get_flag(CFLAG)) {
 		PC += tmp;
 		tick(1);
-	} else {
-		PC++;
 	}
 }
 
@@ -972,8 +966,6 @@ static void op0x38(void)
 	if (get_flag(CFLAG)) {
 		PC += tmp;
 		tick(1);
-	} else {
-		PC++;
 	}
 }
 
