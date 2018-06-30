@@ -32,9 +32,9 @@ static int old_clock_count = 0;
 static int disable_interrupt = 0;
 static int stopped = 0;
 
-static void tick(void)
+static void tick(int n)
 {
-	clock_count += 4;
+	clock_count += 4 * n;
 }
 
 int cpu_cycle(void)
@@ -53,22 +53,34 @@ static void reset_clock_count(void)
 	old_clock_count = 0;
 }
 
+static void cpu_write_mem(u16 addr, u8 val)
+{
+	write_memory(addr, val);
+	tick(1);
+}
+
+static u8 cpu_read_mem(u16 addr)
+{
+	tick(1);
+	return read_memory(addr);
+}
+
 static void push_stack(u8 low, u8 high)
 {
 	SP--;
-	write_memory(SP, high);
+	cpu_write_mem(SP, high);
 	SP--;
-	write_memory(SP, low);
+	cpu_write_mem(SP, low);
+	tick(1);
 }
 
 static u16 pop_stack(void)
 {
 	u16 value;
-	value = read_memory(SP);
-	value += (read_memory(SP + 1) << 8);
+	value = cpu_read_mem(SP);
+	value += (cpu_read_mem(SP + 1) << 8);
 
 	SP += 2;
-
 	return value;
 }
 
@@ -76,10 +88,8 @@ static u8 fetch_8bit_data(void)
 {
 	u8 data;
 
-	data = read_memory(PC);
+	data = cpu_read_mem(PC);
 	PC++;
-
-	tick();
 
 	return data;
 }
@@ -88,11 +98,8 @@ static u16 fetch_16bit_data(void)
 {
 	u16 data;
 
-	data = read_memory(PC) + (read_memory(PC + 1) << 8);
+	data = cpu_read_mem(PC) + (cpu_read_mem(PC + 1) << 8);
 	PC = PC + 2;
-
-	tick();
-	tick();
 
 	return data;
 }
@@ -109,7 +116,6 @@ static void execute_opcode(u8 opcode)
 
 	if (disable_interrupt)
 		set_ime(0);
-	tick();
 }
 
 void fetch_opcode(void)
@@ -119,7 +125,7 @@ void fetch_opcode(void)
 	if (clock_count >= 1024)
 		reset_clock_count();
 	old_clock_count = clock_count;
-	opcode = read_memory(PC);
+	opcode = cpu_read_mem(PC);
 	PC++;
 
 	execute_opcode(opcode);
@@ -223,6 +229,7 @@ static void add_HL(u16 val)
 		set_flag(HFLAG);
 
 	reset_flag(NFLAG);
+	tick(1);
 }
 
 static void sub(u8 val, int with_carry)
@@ -336,7 +343,6 @@ static u8 sla(u8 reg)
 
 	reset_flag(NFLAG);
 	reset_flag(HFLAG);
-
 	return res;
 }
 
@@ -382,7 +388,7 @@ static u8 rl(u8 reg)
 		set_flag(ZFLAG);
 	else
 		reset_flag(ZFLAG);
-
+	tick(1);
 	return res;
 }
 
@@ -397,7 +403,7 @@ static u8 rr(u8 reg)
 		set_flag(ZFLAG);
 	else
 		reset_flag(ZFLAG);
-
+	tick(1);
 	return res;
 }
 
@@ -407,7 +413,7 @@ static u8 rlc(u8 reg)
 	u8 res = sla(reg);
 
 	res = (res & ~1) | cflag;
-
+	tick(1);
 	return res;
 }
 
@@ -422,7 +428,7 @@ static u8 rrc(u8 reg)
 		set_flag(ZFLAG);
 	else
 		reset_flag(ZFLAG);
-
+	tick(1);
 	return res;
 }
 
@@ -516,7 +522,7 @@ static void op0x03(void)
 
 	if (C == 0)
 		B++;
-
+	tick(1);
 }
 
 /* INC B */
@@ -558,8 +564,8 @@ static void op0x07(void)
 static void op0x08(void)
 {
 	u16 addr = fetch_16bit_data();
-	write_memory(addr, SP & 0x00FF);
-	write_memory(addr+1, SP >> 8);
+	cpu_write_mem(addr, SP & 0x00FF);
+	cpu_write_mem(addr+1, SP >> 8);
 }
 
 /* ADD HL,BC */
@@ -576,7 +582,7 @@ static void op0x0A(void)
 	u16 tmp = B;
 	tmp <<= 8;
 	tmp += C;
-	A = read_memory(tmp);
+	A = cpu_read_mem(tmp);
 }
 
 /* DEC BC */
@@ -586,7 +592,7 @@ static void op0x0B(void)
 		B--;
 
 	C--;
-
+	tick(1);
 }
 
 /* INC C */
@@ -650,7 +656,7 @@ static void op0x13(void)
 	E++;
 	if (E == 0)
 		D++;
-
+	tick(1);
 }
 
 /* INC D */
@@ -695,6 +701,7 @@ static void op0x18(void)
 	char tmp;
 	tmp = (char) fetch_8bit_data();
 	PC += tmp;
+	tick(1);
 }
 
 /* ADD HL,DE */
@@ -711,7 +718,7 @@ static void op0x1A(void)
 	u16 tmp = D;
 	tmp <<= 8;
 	tmp += E;
-	A = read_memory(tmp);
+	A = cpu_read_mem(tmp);
 }
 
 /* DEC DE */
@@ -721,6 +728,7 @@ static void op0x1B(void)
 		D--;
 
 	E--;
+	tick(1);
 }
 
 /* INC E */
@@ -753,10 +761,10 @@ static void op0x1F(void)
 /* JR NZ,n */
 static void op0x20(void)
 {
-	char tmp;
+	char tmp = (char) fetch_8bit_data();
 	if (!get_flag(ZFLAG)) {
-		tmp = (char) fetch_8bit_data();
 		PC += tmp;
+		tick(1);
 	} else {
 		PC++;
 	}
@@ -776,7 +784,7 @@ static void op0x22(void)
 	u16 tmp = H;
 	tmp <<= 8;
 	tmp += L;
-	write_memory(tmp, A);
+	cpu_write_mem(tmp, A);
 	L++;
 	if (L == 0)
 		H++;
@@ -788,7 +796,7 @@ static void op0x23(void)
 	L++;
 	if (L == 0)
 		H++;
-
+	tick(1);
 }
 
 /* INC H */
@@ -818,10 +826,10 @@ static void op0x27(void)
 /* JR Z,n */
 static void op0x28(void)
 {
-	char tmp;
+	char tmp = (char) fetch_8bit_data();
 	if (get_flag(ZFLAG)) {
-		tmp = (char) fetch_8bit_data();
 		PC += tmp;
+		tick(1);
 	} else {
 		PC++;
 	}
@@ -841,7 +849,7 @@ static void op0x2A(void)
 	u16 tmp = H;
 	tmp <<= 8;
 	tmp += L;
-	A = read_memory(tmp);
+	A = cpu_read_mem(tmp);
 	op0x23();
 }
 
@@ -852,6 +860,7 @@ static void op0x2B(void)
 		H--;
 
 	L--;
+	tick(1);
 }
 
 /* INC L */
@@ -883,10 +892,10 @@ static void op0x2F(void)
 /* JR NC,n */
 static void op0x30(void)
 {
-	char tmp;
+	char tmp = (char) fetch_8bit_data();
 	if (!get_flag(CFLAG)) {
-		tmp = (char) fetch_8bit_data();
 		PC += tmp;
+		tick(1);
 	} else {
 		PC++;
 	}
@@ -904,7 +913,7 @@ static void op0x32(void)
 	u16 tmp = H;
 	tmp <<= 8;
 	tmp += L;
-	write_memory(tmp, A);
+	cpu_write_mem(tmp, A);
 
 	if (L == 0)
 		H--;
@@ -916,6 +925,7 @@ static void op0x32(void)
 static void op0x33(void)
 {
 	SP++;
+	tick(1);
 }
 
 /* INC (HL) */
@@ -924,7 +934,7 @@ static void op0x34(void)
 	u16 tmp = H;
 	tmp <<= 8;
 	tmp += L;
-	write_memory(tmp, inc(read_memory(tmp)));
+	cpu_write_mem(tmp, inc(cpu_read_mem(tmp)));
 }
 
 /* DEC (HL) */
@@ -934,7 +944,7 @@ static void op0x35(void)
 	tmp <<= 8;
 	tmp += L;
 
-	write_memory(tmp, dec(read_memory(tmp)));
+	cpu_write_mem(tmp, dec(cpu_read_mem(tmp)));
 
 }
 
@@ -944,7 +954,7 @@ static void op0x36(void)
 	u16 tmp = H;
 	tmp <<= 8;
 	tmp += L;
-	write_memory(tmp, fetch_8bit_data());
+	cpu_write_mem(tmp, fetch_8bit_data());
 }
 
 /* SCF */
@@ -958,10 +968,10 @@ static void op0x37(void)
 /* JR C,n */
 static void op0x38(void)
 {
-	char tmp;
+	char tmp = (char) fetch_8bit_data();
 	if (get_flag(CFLAG)) {
-		tmp = (char) fetch_8bit_data();
 		PC += tmp;
+		tick(1);
 	} else {
 		PC++;
 	}
@@ -979,7 +989,7 @@ static void op0x3A(void)
 	u16 tmp = H;
 	tmp <<= 8;
 	tmp += L;
-	A = read_memory(tmp);
+	A = cpu_read_mem(tmp);
 	op0x2B();
 }
 
@@ -987,6 +997,7 @@ static void op0x3A(void)
 static void op0x3B(void)
 {
 	SP--;
+	tick(1);
 }
 
 /* INC A */
@@ -1058,7 +1069,7 @@ static void op0x46(void)
 	u16 tmp = H;
 	tmp <<= 8;
 	tmp += L;
-	B = read_memory(tmp);
+	B = cpu_read_mem(tmp);
 }
 
 /* LD B,A */
@@ -1109,7 +1120,7 @@ static void op0x4E(void)
 	u16 tmp = H;
 	tmp <<= 8;
 	tmp += L;
-	C = read_memory(tmp);
+	C = cpu_read_mem(tmp);
 }
 
 /* LD C,A */
@@ -1160,7 +1171,7 @@ static void op0x56(void)
 	u16 tmp = H;
 	tmp <<= 8;
 	tmp += L;
-	D = read_memory(tmp);
+	D = cpu_read_mem(tmp);
 }
 
 /* LD D,A */
@@ -1211,7 +1222,7 @@ static void op0x5E(void)
 	u16 tmp = H;
 	tmp <<= 8;
 	tmp += L;
-	E = read_memory(tmp);
+	E = cpu_read_mem(tmp);
 }
 
 /* LD E,A */
@@ -1262,7 +1273,7 @@ static void op0x66(void)
 	u16 tmp = H;
 	tmp <<= 8;
 	tmp += L;
-	H = read_memory(tmp);
+	H = cpu_read_mem(tmp);
 }
 
 /* LD H,A */
@@ -1313,7 +1324,7 @@ static void op0x6E(void)
 	u16 tmp = H;
 	tmp <<= 8;
 	tmp += L;
-	L = read_memory(tmp);
+	L = cpu_read_mem(tmp);
 }
 
 /* LD L,A */
@@ -1328,7 +1339,7 @@ static void op0x70(void)
 	u16 tmp = H;
 	tmp <<= 8;
 	tmp += L;
-	write_memory(tmp, B);
+	cpu_write_mem(tmp, B);
 }
 
 /* LD (HL),C */
@@ -1337,7 +1348,7 @@ static void op0x71(void)
 	u16 tmp = H;
 	tmp <<= 8;
 	tmp += L;
-	write_memory(tmp, C);
+	cpu_write_mem(tmp, C);
 }
 
 /* LD (HL),D */
@@ -1346,7 +1357,7 @@ static void op0x72(void)
 	u16 tmp = H;
 	tmp <<= 8;
 	tmp += L;
-	write_memory(tmp, D);
+	cpu_write_mem(tmp, D);
 }
 
 /* LD (HL),E */
@@ -1355,7 +1366,7 @@ static void op0x73(void)
 	u16 tmp = H;
 	tmp <<= 8;
 	tmp += L;
-	write_memory(tmp, E);
+	cpu_write_mem(tmp, E);
 }
 
 /* LD (HL),H */
@@ -1364,7 +1375,7 @@ static void op0x74(void)
 	u16 tmp = H;
 	tmp <<= 8;
 	tmp += L;
-	write_memory(tmp, H);
+	cpu_write_mem(tmp, H);
 }
 
 /* LD (HL),L */
@@ -1373,7 +1384,7 @@ static void op0x75(void)
 	u16 tmp = H;
 	tmp <<= 8;
 	tmp += L;
-	write_memory(tmp, L);
+	cpu_write_mem(tmp, L);
 }
 
 /* HALT */
@@ -1388,7 +1399,7 @@ static void op0x77(void)
 	u16 tmp = H;
 	tmp <<= 8;
 	tmp += L;
-	write_memory(tmp, A);
+	cpu_write_mem(tmp, A);
 }
 
 /* LD A,B */
@@ -1433,7 +1444,7 @@ static void op0x7E(void)
 	u16 tmp = H;
 	tmp <<= 8;
 	tmp += L;
-	A = read_memory(tmp);
+	A = cpu_read_mem(tmp);
 }
 
 /* LD A,A */
@@ -1482,7 +1493,7 @@ static void op0x85(void)
 static void op0x86(void)
 {
 	u16 tmp = (H << 8) + L;
-	add(read_memory(tmp), 0);
+	add(cpu_read_mem(tmp), 0);
 }
 
 /* ADD A,A */
@@ -1533,7 +1544,7 @@ static void op0x8E(void)
 	u16 tmp = H;
 	tmp <<= 8;
 	tmp += L;
-	add(read_memory(tmp), 1);
+	add(cpu_read_mem(tmp), 1);
 }
 
 /* ADC A,A */
@@ -1584,7 +1595,7 @@ static void op0x96(void)
 	u16 tmp = H;
 	tmp <<= 8;
 	tmp += L;
-	sub(read_memory(tmp), 0);
+	sub(cpu_read_mem(tmp), 0);
 }
 
 /* SUB A,A */
@@ -1635,7 +1646,7 @@ static void op0x9E(void)
 	u16 tmp = H;
 	tmp <<= 8;
 	tmp += L;
-	sub(read_memory(tmp), 1);
+	sub(cpu_read_mem(tmp), 1);
 }
 
 /* SBC A,A */
@@ -1684,7 +1695,7 @@ static void op0xA5(void)
 static void op0xA6(void)
 {
 	u16 tmp = (H << 8) + L;
-	and(read_memory(tmp));
+	and(cpu_read_mem(tmp));
 }
 
 /* AND A,A */
@@ -1733,7 +1744,7 @@ static void op0xAD(void)
 static void op0xAE(void)
 {
 	u16 tmp = (H << 8) + L;
-	xor(read_memory(tmp));
+	xor(cpu_read_mem(tmp));
 }
 
 /* XOR A,A */
@@ -1782,7 +1793,7 @@ static void op0xB5(void)
 static void op0xB6(void)
 {
 	u8 tmp = (H << 8) + L;
-	or(read_memory(tmp));
+	or(cpu_read_mem(tmp));
 }
 
 /* OR A,A */
@@ -1831,7 +1842,7 @@ static void op0xBD(void)
 static void op0xBE(void)
 {
 	u16 tmp = (H << 8) + L;
-	cmp(read_memory(tmp));
+	cmp(cpu_read_mem(tmp));
 }
 
 /* CP A,A */
@@ -1843,8 +1854,11 @@ static void op0xBF(void)
 /* RET NZ */
 static void op0xC0(void)
 {
-	if (!get_flag(ZFLAG))
+	if (!get_flag(ZFLAG)) {
 		PC = pop_stack();
+		tick(2);
+	}
+	tick(1);
 }
 
 /* POP BC*/
@@ -1859,10 +1873,10 @@ static void op0xC1(void)
 /* JP NZ,nn */
 static void op0xC2(void)
 {
-	u16 address;
+	u16 address = fetch_16bit_data();
 	if (!get_flag(ZFLAG)) {
-		address = fetch_16bit_data();
 		PC = address;
+		tick(1);
 	}
 }
 
@@ -1871,6 +1885,7 @@ static void op0xC3(void)
 {
 	u16 address = fetch_16bit_data();
 	PC = address;
+	tick(1);
 }
 
 /* CALL NZ,nn */
@@ -1878,10 +1893,9 @@ static void op0xC4(void)
 {
 	u8 low;
 	u8 high;
-	u16 address;
+	u16 address = fetch_16bit_data();
 
 	if (!get_flag(ZFLAG)) {
-		address = fetch_16bit_data();
 		low = PC;
 		high = PC >> 8;
 		push_stack(low, high);
@@ -1911,24 +1925,28 @@ static void op0xC7(void)
 /* RET Z */
 static void op0xC8(void)
 {
-	if (get_flag(ZFLAG))
+	if (get_flag(ZFLAG)) {
 		PC = pop_stack();
+		tick(2);
+	}
+	tick(1);
 }
 
 /* RET */
 static void op0xC9(void)
 {
 	PC = pop_stack();
+	tick(1);
 }
 
 /* JP Z,nn */
 static void op0xCA(void)
 {
-	u16 address;
+	u16 address = fetch_16bit_data();
 
 	if (get_flag(ZFLAG)) {
-		address = fetch_16bit_data();
 		PC = address;
+		tick(1);
 	}
 }
 
@@ -1945,10 +1963,9 @@ static void op0xCC(void)
 {
 	u8 low;
 	u8 high;
-	u16 address;
+	u16 address = fetch_16bit_data();
 
 	if (get_flag(ZFLAG)) {
-		address = fetch_16bit_data();
 		low = PC;
 		high = PC >> 8;
 		push_stack(low, high);
@@ -1984,12 +2001,11 @@ static void op0xCF(void)
 /* RET NC */
 static void op0xD0(void)
 {
-	u16 address;
-
 	if (!get_flag(CFLAG)) {
-		address = pop_stack();
-		PC = address;
+		PC = pop_stack();
+		tick(2);
 	}
+	tick(1);
 }
 
 /* POP DE */
@@ -2004,11 +2020,11 @@ static void op0xD1(void)
 /* JP NC,nn */
 static void op0xD2(void)
 {
-	u16 address;
+	u16 address = fetch_16bit_data();
 
 	if (!get_flag(CFLAG)) {
-		address = fetch_16bit_data();
 		PC = address;
+		tick(1);
 	}
 }
 
@@ -2023,10 +2039,9 @@ static void op0xD4(void)
 {
 	u8 low;
 	u8 high;
-	u16 address;
+	u16 address = fetch_16bit_data();
 
 	if (!get_flag(CFLAG)) {
-		address = fetch_16bit_data();
 		low = PC;
 		high = PC >> 8;
 		push_stack(low, high);
@@ -2060,12 +2075,11 @@ static void op0xD7(void)
 /* RET C */
 static void op0xD8(void)
 {
-	u16 address;
-
 	if (get_flag(CFLAG)) {
-		address = pop_stack();
-		PC = address;
+		PC = pop_stack();
+		tick(2);
 	}
+	tick(1);
 }
 
 /* RETI */
@@ -2073,16 +2087,17 @@ static void op0xD9(void)
 {
 	PC = pop_stack();
 	set_ime(1);
+	tick(1);
 }
 
 /* JP C,nn */
 static void op0xDA(void)
 {
-	u16 address;
+	u16 address = fetch_16bit_data();
 
 	if (get_flag(CFLAG)) {
-		address = fetch_16bit_data();
 		PC = address;
+		tick(1);
 	}
 }
 
@@ -2097,10 +2112,9 @@ static void op0xDC(void)
 {
 	u8 low;
 	u8 high;
-	u16 address;
+	u16 address = fetch_16bit_data();
 
 	if (get_flag(CFLAG)) {
-		address = fetch_16bit_data();
 		low = PC;
 		high = PC >> 8;
 		push_stack(low, high);
@@ -2135,7 +2149,7 @@ static void op0xE0(void)
 
 	address += 0xFF00;
 
-	write_memory(address, A);
+	cpu_write_mem(address, A);
 }
 
 /* POP HL */
@@ -2151,7 +2165,7 @@ static void op0xE1(void)
 static void op0xE2(void)
 {
 	u16 address = 0xFF00 + C;
-	write_memory(address, A);
+	cpu_write_mem(address, A);
 }
 
 /* N/A */
@@ -2188,7 +2202,7 @@ static void op0xE7(void)
 /* ADD SP,n */
 static void op0xE8(void)
 {
-	u8 tmp = fetch_8bit_data();
+	char tmp = (char) fetch_8bit_data();
 	int res = tmp + SP;
 
 	reset_flag(ZFLAG);
@@ -2201,11 +2215,13 @@ static void op0xE8(void)
 		set_flag(CFLAG);
 
 	SP = res;
+	tick(2);
 }
 
 /* JP (HL) */
 static void op0xE9(void)
 {
+	/* TODO: check if memory access necessar */
 	PC = (H << 8) + L;
 }
 
@@ -2213,7 +2229,7 @@ static void op0xE9(void)
 static void op0xEA(void)
 {
 	u16 address = fetch_16bit_data();
-	write_memory(address, A);
+	cpu_write_mem(address, A);
 }
 
 /* N/A */
@@ -2252,7 +2268,7 @@ static void op0xF0(void)
 {
 	u8 tmp = fetch_8bit_data();
 
-	A = read_memory(0xFF00 + tmp);
+	A = cpu_read_mem(0xFF00 + tmp);
 }
 
 /* POP AF */
@@ -2267,7 +2283,7 @@ static void op0xF1(void)
 /* LD A,(C) */
 static void op0xF2(void)
 {
-	u8 tmp = read_memory(0xFF00 + C);
+	u8 tmp = cpu_read_mem(0xFF00 + C);
 
 	A = tmp;
 }
@@ -2306,7 +2322,7 @@ static void op0xF7(void)
 /* LD HL,SP+n */
 static void op0xF8(void)
 {
-	u8 value = fetch_8bit_data();
+	char value = (char) fetch_8bit_data();
 	int result;
 	result = SP + value;
 	if (result > 0xFFFF)
@@ -2325,6 +2341,7 @@ static void op0xF8(void)
 
 	reset_flag(ZFLAG);
 	reset_flag(NFLAG);
+	tick(1);
 }
 
 /* LD SP,HL */
@@ -2334,6 +2351,7 @@ static void op0xF9(void)
 	tmp <<= 8;
 	tmp += L;
 	SP = tmp;
+	tick(1);
 }
 
 /* LD A,(nn) */
@@ -2341,7 +2359,7 @@ static void op0xFA(void)
 {
 	u16 address = fetch_16bit_data();
 
-	A = read_memory(address);
+	A = cpu_read_mem(address);
 }
 
 /* EI */
@@ -2415,10 +2433,10 @@ static void CB_op0x05(void)
 static void CB_op0x06(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 
 	reg = rlc(reg);
-	write_memory(address, reg);
+	cpu_write_mem(address, reg);
 }
 
 /* RLC A */
@@ -2467,10 +2485,10 @@ static void CB_op0x0D(void)
 static void CB_op0x0E(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 
 	reg = rrc(reg);
-	write_memory(address, reg);
+	cpu_write_mem(address, reg);
 }
 
 /* RRC A */
@@ -2519,10 +2537,10 @@ static void CB_op0x15(void)
 static void CB_op0x16(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 
 	reg = rl(reg);
-	write_memory(address, reg);
+	cpu_write_mem(address, reg);
 }
 
 /* RL A */
@@ -2571,10 +2589,10 @@ static void CB_op0x1D(void)
 static void CB_op0x1E(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 
 	reg = rr(reg);
-	write_memory(address, reg);
+	cpu_write_mem(address, reg);
 }
 
 /* RR A */
@@ -2623,10 +2641,10 @@ static void CB_op0x25(void)
 static void CB_op0x26(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 
 	reg = sla(reg);
-	write_memory(address, reg);
+	cpu_write_mem(address, reg);
 }
 
 /* SLA A */
@@ -2675,10 +2693,10 @@ static void CB_op0x2D(void)
 static void CB_op0x2E(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 
 	reg = sra(reg);
-	write_memory(address, reg);
+	cpu_write_mem(address, reg);
 }
 
 /* SRA A */
@@ -2727,10 +2745,10 @@ static void CB_op0x35(void)
 static void CB_op0x36(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 
 	reg = swap(reg);
-	write_memory(address, reg);
+	cpu_write_mem(address, reg);
 }
 
 /* SWAP A */
@@ -2779,10 +2797,10 @@ static void CB_op0x3D(void)
 static void CB_op0x3E(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 
 	reg = srl(reg);
-	write_memory(address, reg);
+	cpu_write_mem(address, reg);
 }
 
 /* SRL A */
@@ -2831,7 +2849,7 @@ static void CB_op0x45(void)
 static void CB_op0x46(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 	check_bit(reg, 0);
 }
 
@@ -2881,7 +2899,7 @@ static void CB_op0x4D(void)
 static void CB_op0x4E(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 	check_bit(reg, 1);
 }
 
@@ -2931,7 +2949,7 @@ static void CB_op0x55(void)
 static void CB_op0x56(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 	check_bit(reg, 2);
 }
 
@@ -2981,7 +2999,7 @@ static void CB_op0x5D(void)
 static void CB_op0x5E(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 	check_bit(reg, 3);
 }
 
@@ -3031,7 +3049,7 @@ static void CB_op0x65(void)
 static void CB_op0x66(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 	check_bit(reg, 4);
 }
 
@@ -3081,7 +3099,7 @@ static void CB_op0x6D(void)
 static void CB_op0x6E(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 	check_bit(reg, 5);
 }
 
@@ -3131,7 +3149,7 @@ static void CB_op0x75(void)
 static void CB_op0x76(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 	check_bit(reg, 6);
 }
 
@@ -3181,7 +3199,7 @@ static void CB_op0x7D(void)
 static void CB_op0x7E(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 	check_bit(reg, 7);
 }
 
@@ -3231,9 +3249,9 @@ static void CB_op0x85(void)
 static void CB_op0x86(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 	reg = reset_bit(reg, 0);
-	write_memory(address, reg);
+	cpu_write_mem(address, reg);
 }
 
 /* RES 0,A */
@@ -3282,9 +3300,9 @@ static void CB_op0x8D(void)
 static void CB_op0x8E(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 	reg = reset_bit(reg, 1);
-	write_memory(address, reg);
+	cpu_write_mem(address, reg);
 }
 
 /* RES 1,A */
@@ -3333,9 +3351,9 @@ static void CB_op0x95(void)
 static void CB_op0x96(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 	reg = reset_bit(reg, 2);
-	write_memory(address, reg);
+	cpu_write_mem(address, reg);
 }
 
 /* RES 2,A */
@@ -3384,9 +3402,9 @@ static void CB_op0x9D(void)
 static void CB_op0x9E(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 	reg = reset_bit(reg, 3);
-	write_memory(address, reg);
+	cpu_write_mem(address, reg);
 }
 
 /* RES 3,A */
@@ -3435,9 +3453,9 @@ static void CB_op0xA5(void)
 static void CB_op0xA6(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 	reg = reset_bit(reg, 4);
-	write_memory(address, reg);
+	cpu_write_mem(address, reg);
 }
 
 /* RES 4,A */
@@ -3486,9 +3504,9 @@ static void CB_op0xAD(void)
 static void CB_op0xAE(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 	reg = reset_bit(reg, 5);
-	write_memory(address, reg);
+	cpu_write_mem(address, reg);
 }
 
 /* RES 5,A */
@@ -3537,9 +3555,9 @@ static void CB_op0xB5(void)
 static void CB_op0xB6(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 	reg = reset_bit(reg, 6);
-	write_memory(address, reg);
+	cpu_write_mem(address, reg);
 }
 
 /* RES 6,A */
@@ -3588,9 +3606,9 @@ static void CB_op0xBD(void)
 static void CB_op0xBE(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 	reg = reset_bit(reg, 7);
-	write_memory(address, reg);
+	cpu_write_mem(address, reg);
 }
 
 /* RES 7,A */
@@ -3639,9 +3657,9 @@ static void CB_op0xC5(void)
 static void CB_op0xC6(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 	reg = set_bit(reg, 0);
-	write_memory(address, reg);
+	cpu_write_mem(address, reg);
 }
 
 /* SET 0,A */
@@ -3690,9 +3708,9 @@ static void CB_op0xCD(void)
 static void CB_op0xCE(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 	reg = set_bit(reg, 1);
-	write_memory(address, reg);
+	cpu_write_mem(address, reg);
 }
 
 /* SET 1,A */
@@ -3741,9 +3759,9 @@ static void CB_op0xD5(void)
 static void CB_op0xD6(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 	reg = set_bit(reg, 2);
-	write_memory(address, reg);
+	cpu_write_mem(address, reg);
 }
 
 /* SET 2,A */
@@ -3792,9 +3810,9 @@ static void CB_op0xDD(void)
 static void CB_op0xDE(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 	reg = set_bit(reg, 3);
-	write_memory(address, reg);
+	cpu_write_mem(address, reg);
 }
 
 /* SET 3,A */
@@ -3843,9 +3861,9 @@ static void CB_op0xE5(void)
 static void CB_op0xE6(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 	reg = set_bit(reg, 4);
-	write_memory(address, reg);
+	cpu_write_mem(address, reg);
 }
 
 /* SET 4,A */
@@ -3894,9 +3912,9 @@ static void CB_op0xED(void)
 static void CB_op0xEE(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 	reg = set_bit(reg, 5);
-	write_memory(address, reg);
+	cpu_write_mem(address, reg);
 }
 
 /* SET 5,A */
@@ -3945,9 +3963,9 @@ static void CB_op0xF5(void)
 static void CB_op0xF6(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 	reg = set_bit(reg, 6);
-	write_memory(address, reg);
+	cpu_write_mem(address, reg);
 }
 
 /* SET 6,A */
@@ -3996,9 +4014,9 @@ static void CB_op0xFD(void)
 static void CB_op0xFE(void)
 {
 	u16 address = (H << 8) + L;
-	u8 reg = read_memory(address);
+	u8 reg = cpu_read_mem(address);
 	reg = set_bit(reg, 7);
-	write_memory(address, reg);
+	cpu_write_mem(address, reg);
 }
 
 /* SET 7,A */
