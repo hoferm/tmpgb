@@ -2202,7 +2202,7 @@ static void op0xE7(void)
 /* ADD SP,n */
 static void op0xE8(void)
 {
-	u8 tmp = fetch_8bit_data();
+	char tmp = (char) fetch_8bit_data();
 	int res = tmp + SP;
 
 	reset_flag(ZFLAG);
