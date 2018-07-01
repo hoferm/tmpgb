@@ -28,7 +28,10 @@ static void disassemble(int n)
 		opcode = read_memory((*cpu.PC) + i);
 
 		printf("\t");
-		if (strstr(op_names[opcode], "%.4X") != NULL) {
+		if (strstr(op_names[opcode], "JR") != NULL) {
+			op_param = *cpu.PC + 2 + (char) read_memory(*cpu.PC + i + 1);
+			printf(op_names[opcode], op_param);
+		} else if (strstr(op_names[opcode], "%.4X") != NULL) {
 			op_param = read_memory(cpu.PC[0] + i + 1) +
 				(read_memory(cpu.PC[0] + i + 2) << 8);
 			printf(op_names[opcode], op_param);
@@ -72,15 +75,18 @@ static void flags(void)
 static void intr_status(void)
 {
 	u8 ly = read_memory(0xFF44);
+	u8 ie = read_memory(0xFFFF);
+	u8 ir = read_memory(0xFF0F);
 	int ime = get_ime();
 
 	printf("ly: %d\n", ly);
-	printf("ime: %d\n", ime);
+	printf("ime: %d, ie: %d, ir: %d\n", ime, ie, ir);
 }
 
 static void regs(void)
 {
 	intr_status();
+	printf("PC: %.4X, SP: %.4X\n", *cpu.PC, *cpu.SP);
 	flags();
 	printf("\tB: %.2X, C: %.2X\n", *cpu.B, *cpu.C);
 	printf("\tD: %.2X, E: %.2X\n", *cpu.D, *cpu.E);
