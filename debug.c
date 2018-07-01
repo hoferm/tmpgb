@@ -200,6 +200,8 @@ void debug(void)
 			while (read_memory(param) != param2)
 				step();
 		}
+	} else if (!strcmp(cmd, "run\n")) {
+		enabled = 0;
 	} else {
 		printf("\tUnknown command\n");
 		return;
