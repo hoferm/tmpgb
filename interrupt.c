@@ -6,7 +6,7 @@
 #define MEM_IR (0xFF0F)
 #define MEM_IE (0xFFFF)
 
-static int interrupt_master_enable = 1;
+static int interrupt_master_enable = 0;
 
 void set_ime(int enabled)
 {
