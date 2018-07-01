@@ -4,6 +4,7 @@
 #include "gameboy.h"
 
 #include "cpu.h"
+#include "interrupt.h"
 #include "memory.h"
 #include "video.h"
 
@@ -222,10 +223,13 @@ int draw(u8 *scr)
 	case 0:
 		if (clock >= 204) {
 			write_ly(ly+1);
-			if (ly == 143)
+			if (ly == 144) {
 				set_statmode(stat, 1);
-			else
+				request_interrupt(INT_VBLANK);
+			}
+			else {
 				set_statmode(stat, 2);
+			}
 			clock = 0;
 		}
 		break;
@@ -234,7 +238,7 @@ int draw(u8 *scr)
 		if (clock >= 456) {
 			ly++;
 			write_ly(ly);
-			if (ly > 154) {
+			if (ly >= 153) {
 				write_ly(0);
 				set_statmode(stat, 2);
 			}
