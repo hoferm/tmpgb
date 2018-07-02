@@ -215,8 +215,10 @@ int draw(u8 *scr)
 	screen = scr;
 	update_registers();
 
-	if (!get_bit(lcdc, 7))
+	if (!get_bit(lcdc, 7)) {
+		write_ly(0);
 		return LCD_OFF;
+	}
 
 	switch (stat_mode) {
 	/* H-Blank */
