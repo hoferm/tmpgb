@@ -40,7 +40,7 @@ int execute_interrupt(void)
 			interrupt_request = reset_bit(interrupt_request, 1);
 			interrupt = INT_LCD;
 		} else if (get_bit(tmp, 2)) {
-			interrupt_request = reset_bit(interrupt_request, 2);
+			interrupt_enable = reset_bit(interrupt_request, 2);
 			interrupt = INT_TIMER;
 		} else if (get_bit(tmp, 3)) {
 			interrupt_request = reset_bit(interrupt_request, 3);
@@ -60,26 +60,20 @@ int execute_interrupt(void)
 void request_interrupt(int interrupt)
 {
 	u8 interrupt_request = read_memory(MEM_IR);
-	u8 interrupt_enable = read_memory(MEM_IE);
 	switch (interrupt) {
 	case INT_VBLANK:
-		write_memory(MEM_IE, set_bit(interrupt_enable, 0));
 		write_memory(MEM_IR, set_bit(interrupt_request, 0));
 		break;
 	case INT_LCD:
-		write_memory(MEM_IE, set_bit(interrupt_enable, 1));
 		write_memory(MEM_IR, set_bit(interrupt_request, 1));
 		break;
 	case INT_TIMER:
-		write_memory(MEM_IE, set_bit(interrupt_enable, 2));
 		write_memory(MEM_IR, set_bit(interrupt_request, 2));
 		break;
 	case INT_SERIAL:
-		write_memory(MEM_IE, set_bit(interrupt_enable, 3));
 		write_memory(MEM_IR, set_bit(interrupt_request, 3));
 		break;
 	case INT_JOYPAD:
-		write_memory(MEM_IE, set_bit(interrupt_enable, 4));
 		write_memory(MEM_IR, set_bit(interrupt_request, 4));
 		break;
 	}

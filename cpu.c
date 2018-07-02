@@ -106,25 +106,36 @@ static u16 fetch_16bit_data(void)
 
 static void execute_opcode(u8 opcode)
 {
-	int interrupt = execute_interrupt();
-	if (interrupt) {
-		push_stack(PC, PC >> 8);
-		PC = interrupt;
-	}
-
 	optable[opcode]();
 
-	if (disable_interrupt)
+	if (disable_interrupt) {
 		set_ime(0);
+		disable_interrupt = 0;
+	}
 }
 
 void fetch_opcode(void)
 {
 	u8 opcode;
+	int interrupt = execute_interrupt();
+	static int intr_cnt = 0;
 
 	if (clock_count >= 1024)
 		reset_clock_count();
 	old_clock_count = clock_count;
+
+	if (interrupt) {
+		push_stack(PC, PC >> 8);
+		PC = interrupt;
+		intr_cnt = 1;
+	}
+	if (intr_cnt) {
+		optable[0]();
+		tick(1);
+		intr_cnt--;
+		return;
+	}
+
 	opcode = cpu_read_mem(PC);
 	PC++;
 
