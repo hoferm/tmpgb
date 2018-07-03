@@ -40,7 +40,7 @@ int execute_interrupt(void)
 			interrupt_request = reset_bit(interrupt_request, 1);
 			interrupt = INT_LCD;
 		} else if (get_bit(tmp, 2)) {
-			interrupt_enable = reset_bit(interrupt_request, 2);
+			interrupt_request = reset_bit(interrupt_request, 2);
 			interrupt = INT_TIMER;
 		} else if (get_bit(tmp, 3)) {
 			interrupt_request = reset_bit(interrupt_request, 3);
