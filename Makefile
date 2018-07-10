@@ -1,6 +1,6 @@
 CC = cc
 RM = rm -f
-CFLAGS = -Wall -Wextra -std=c99 -pedantic -g
+CFLAGS = -Wall -Wextra -std=c99 -pedantic -O2
 CFLAGS += -Werror \
 	-Wstrict-prototypes \
 	-Wdeclaration-after-statement \
