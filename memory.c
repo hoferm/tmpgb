@@ -104,6 +104,20 @@ static void change_mbc_mode(u8 value)
 		memory.mbc_mode = mbc;
 	}
 }
+static void write_io(u16 address, u8 value)
+{
+	u16 offset = (address - MEM_IO_REGISTER);
+	u8 *addr = &memory.io_reg[offset];
+	if (address == 0xFF00) {
+		*addr = (*addr & 0xCF) + (value & 0x30);
+	} else if (address == 0xFF41) {
+		*addr = (*addr & 0x07) + (value & 0xF8);
+	} else if (address == 0xFF44) {
+		*addr = 0;
+	} else {
+		*addr = value;
+	}
+}
 
 void write_memory(u16 address, u8 value)
 {
@@ -163,14 +177,7 @@ void write_memory(u16 address, u8 value)
 			memory.sprite_table[offset] = value;
 		} else if (address <= 0xFEFF) {
 		} else if (address <= 0xFF7F) {
-			offset = (address - MEM_IO_REGISTER);
-			if (address == 0xFF00) {
-				memory.io_reg[0] = value | 0xCF;
-			} else if (address == 0xFF44) {
-				memory.io_reg[offset] = 0;
-			} else {
-				memory.io_reg[offset] = value;
-			}
+			write_io(address, value);
 		} else if (address <= 0xFFFE) {
 			offset = (address - MEM_HIGH_RAM);
 			memory.hram[offset] = value;
@@ -251,6 +258,16 @@ u8 read_memory(u16 address)
 void write_ly(u8 v)
 {
 	memory.io_reg[0x44] = v;
+}
+
+void write_joypad(u8 v)
+{
+	memory.io_reg[0] = v;
+}
+
+void write_stat(u8 v)
+{
+	memory.io_reg[0x41] = v;
 }
 
 int init_memory(void)

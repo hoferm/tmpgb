@@ -67,7 +67,7 @@ static void oam_search(void)
 	struct sprite sp;
 	int spr_size = 0;
 
-	for (i = 0xFF00; i < 0xFFA0; i += 4) {
+	for (i = 0xFE00; i < 0xFEA0; i += 4) {
 		u8 y = read_memory(i);
 		if (ly <= y && ly > (y - spr_height)) {
 			sp.y = read_memory(i);
@@ -204,7 +204,7 @@ static void update_registers(void)
 static void set_statmode(u8 stat, u8 statmode)
 {
 	stat = (stat & (1U << 2)) + statmode;
-	write_memory(0xFF41, stat);
+	write_stat(stat);
 }
 
 int draw(u8 *scr)
