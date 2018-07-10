@@ -29,7 +29,7 @@ static u16 SP;
 static int clock_count = 0;
 static int old_clock_count = 0;
 
-static int disable_interrupt = 0;
+static int ime_scheduled = 0;
 static int stopped = 0;
 
 static void tick(int n)
@@ -106,19 +106,17 @@ static u16 fetch_16bit_data(void)
 
 static void execute_opcode(u8 opcode)
 {
-	optable[opcode]();
-
-	if (disable_interrupt) {
-		set_ime(0);
-		disable_interrupt = 0;
+	if (ime_scheduled) {
+		set_ime(1);
+		ime_scheduled = 0;
 	}
+	optable[opcode]();
 }
 
 void fetch_opcode(void)
 {
 	u8 opcode;
 	int interrupt = execute_interrupt();
-	static int intr_cnt = 0;
 
 	if (clock_count >= 1024)
 		reset_clock_count();
@@ -127,15 +125,7 @@ void fetch_opcode(void)
 	if (interrupt) {
 		push_stack(PC, PC >> 8);
 		PC = interrupt;
-		intr_cnt = 1;
 	}
-	if (intr_cnt) {
-		optable[0]();
-		tick(1);
-		intr_cnt--;
-		return;
-	}
-
 	opcode = cpu_read_mem(PC);
 	PC++;
 
@@ -1024,6 +1014,8 @@ static void op0x3E(void)
 /* CCF */
 static void op0x3F(void)
 {
+	reset_flag(NFLAG);
+	reset_flag(HFLAG);
 	if (get_flag(CFLAG))
 		reset_flag(CFLAG);
 	else
@@ -2221,10 +2213,9 @@ static void op0xE8(void)
 	tick(2);
 }
 
-/* JP (HL) */
+/* JP HL */
 static void op0xE9(void)
 {
-	/* TODO: check if memory access necessar */
 	PC = (H << 8) + L;
 }
 
@@ -2294,7 +2285,9 @@ static void op0xF2(void)
 /* DI */
 static void op0xF3(void)
 {
-	disable_interrupt = 1;
+	set_ime(0);
+	if (ime_scheduled)
+		ime_scheduled = 0;
 }
 
 /* N/A */
