@@ -164,10 +164,13 @@ void write_memory(u16 address, u8 value)
 		} else if (address <= 0xFEFF) {
 		} else if (address <= 0xFF7F) {
 			offset = (address - MEM_IO_REGISTER);
-			if (address == 0xFF44)
+			if (address == 0xFF00) {
+				memory.io_reg[0] = value | 0xCF;
+			} else if (address == 0xFF44) {
 				memory.io_reg[offset] = 0;
-			else
+			} else {
 				memory.io_reg[offset] = value;
+			}
 		} else if (address <= 0xFFFE) {
 			offset = (address - MEM_HIGH_RAM);
 			memory.hram[offset] = value;
@@ -258,7 +261,7 @@ int init_memory(void)
 	if (!check_complement())
 		return -1;
 
-	write_memory(0xFF00, 0xFF);
+	write_memory(0xFF00, 0xEF);
 
 	write_memory(0xFF05, 0x00);
 	write_memory(0xFF06, 0x00);

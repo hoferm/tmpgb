@@ -26,7 +26,7 @@ int init_sdl(void)
 		ret = -1;
 		goto out;
 	}
-	window = SDL_CreateWindow("tmpgb", 0, 0, WIDTH, HEIGHT, SDL_WINDOW_SHOWN);
+	window = SDL_CreateWindow("tmpgb", 600, 400, WIDTH, HEIGHT, SDL_WINDOW_SHOWN);
 	if (!window) {
 		ret = -1;
 		goto out;
