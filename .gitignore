@@ -2,3 +2,4 @@ roms/
 obj/
 tmpgb
 gen_opcodes.sh
+resources/
