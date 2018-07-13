@@ -107,6 +107,8 @@ static int handle_options(int *argc, char ***argv)
 		if (!strcmp(cmd, "-b")) {
 			(*argv)++;
 			(*argc)--;
+			if (*argc < 2)
+				usage();
 			bootrom = *argv[0];
 		}
 		(*argv)++;
