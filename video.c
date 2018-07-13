@@ -232,7 +232,7 @@ int draw(u8 *scr)
 			else {
 				set_statmode(stat, 2);
 			}
-			clock = 0;
+			clock -= 204;
 		}
 		break;
 	/* V-Blank */
@@ -244,7 +244,7 @@ int draw(u8 *scr)
 				write_ly(0);
 				set_statmode(stat, 2);
 			}
-			clock = 0;
+			clock -= 456;
 		}
 		break;
 	/* OAM Search */
@@ -252,7 +252,7 @@ int draw(u8 *scr)
 		if (clock >= 80) {
 			oam_search();
 			set_statmode(stat, 3);
-			clock = 0;
+			clock -= 80;
 		}
 		break;
 	/* LCD Transfer */
@@ -260,7 +260,7 @@ int draw(u8 *scr)
 		if (clock >= 172) {
 			pixel_transfer();
 			set_statmode(stat, 0);
-			clock = 0;
+			clock -= 172;
 			ret = LCD_DRAWN;
 		}
 		break;

@@ -19,8 +19,9 @@ void update_timer(void)
 	tima_count += inc;
 
 	if (div_count >= 256) {
-		(div)++;
-		div_count = 0;
+		div++;
+		write_memory(0xFF04, div);
+		div_count -= 256;
 	}
 
 	switch (tac & 0x3) {
@@ -43,9 +44,9 @@ void update_timer(void)
 			tima = tma;
 			request_interrupt(INT_TIMER);
 		} else {
-			(tima)++;
+			tima++;
 		}
-
-		tima_count = 0;
+		write_memory(0xFF05, tima);
+		tima_count -= cpu_clock;
 	}
 }
