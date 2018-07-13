@@ -464,17 +464,20 @@ static void check_bit(u8 reg, u8 bit)
 
 void init_cpu(void)
 {
-	A = 0x01;
-	F = 0xB0;
-	B = 0x00;
-	C = 0x13;
-	D = 0x00;
-	E = 0xD8;
-	H = 0x01;
-	L = 0x4D;
-	SP = 0xFFFE;
-
-	PC = 0x100;
+	if (!bootrom_loaded()) {
+		A = 0x01;
+		F = 0xB0;
+		B = 0x00;
+		C = 0x13;
+		D = 0x00;
+		E = 0xD8;
+		H = 0x01;
+		L = 0x4D;
+		SP = 0xFFFE;
+		PC = 0x100;
+	} else {
+		PC = 0x0;
+	}
 
 	init_optable();
 	init_cb_optable();

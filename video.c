@@ -203,7 +203,7 @@ static void update_registers(void)
 
 static void set_statmode(u8 stat, u8 statmode)
 {
-	stat = (stat & (1U << 2)) + statmode;
+	stat = (stat & (0xFFU << 2)) + statmode;
 	write_stat(stat);
 }
 

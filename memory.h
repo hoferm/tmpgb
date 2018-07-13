@@ -5,6 +5,7 @@ enum {
 	MBC1
 } mode;
 
+void read_bootrom(const u8 *buffer);
 void read_rom(const unsigned char *buffer, int count);
 void write_memory(unsigned short addr, unsigned char value);
 unsigned char read_memory(unsigned short addr);

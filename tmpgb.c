@@ -13,9 +13,31 @@
 
 #define READ_SIZE 0x4000
 
+static char *bootrom;
+
 static void usage(void)
 {
-	usagef("tmpgb [-d] <file>");
+	usagef("tmpgb [-b <boot-rom>] [-d] <file>");
+}
+
+static void load_bootrom(const char *bootrom)
+{
+	FILE *fp;
+	u8 buffer[256];
+	size_t nread;
+
+	fp = fopen(bootrom, "rb");
+	if (!fp)
+		die_errno("could not open BOOT ROM");
+
+	nread = fread(buffer, 1, 256, fp);
+	if (nread < 256) {
+		if (ferror(fp)) {
+			fclose(fp);
+			die_errno("could not read BOOT ROM");
+		}
+	}
+	read_bootrom(buffer);
 }
 
 static void load_rom(const char *rom)
@@ -82,6 +104,11 @@ static int handle_options(int *argc, char ***argv)
 
 		if (!strcmp(cmd, "-d"))
 			enable_debug();
+		if (!strcmp(cmd, "-b")) {
+			(*argv)++;
+			(*argc)--;
+			bootrom = *argv[0];
+		}
 		(*argv)++;
 		(*argc)--;
 	}
@@ -105,6 +132,8 @@ int main(int argc, char **argv)
 		usage();
 
 	rom = argv[0];
+	if (bootrom)
+		load_bootrom(bootrom);
 	load_rom(rom);
 	run();
 	close_sdl();
