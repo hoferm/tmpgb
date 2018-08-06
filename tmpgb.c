@@ -17,7 +17,7 @@ static char *bootrom;
 
 static void usage(void)
 {
-	usagef("tmpgb [-b <boot-rom>] [-d] <file>");
+	usagef("tmpgb [-b <boot-rom>] [-d] <rom>");
 }
 
 static void load_bootrom(const char *bootrom)
@@ -108,8 +108,8 @@ static int handle_options(int *argc, char ***argv)
 			(*argv)++;
 			(*argc)--;
 			if (*argc < 2)
-				usage();
-			bootrom = *argv[0];
+				return -1;
+			bootrom = (*argv)[0];
 		}
 		(*argv)++;
 		(*argc)--;
