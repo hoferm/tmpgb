@@ -12,5 +12,6 @@ unsigned char read_memory(unsigned short addr);
 void write_ly(u8 v);
 void write_joypad(u8 v);
 void write_stat(u8 v);
+int bootrom_loaded(void);
 int init_memory(void);
 #endif
