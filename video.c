@@ -146,8 +146,6 @@ static void pixel_transfer(void)
 
 	for (i = 0; i < WIDTH; i++) {
 		u8 xoff = (i + scx) % 8;
-		/* printf("offset: %X, ly:%d, scx: %d, scy: %d, loff: %d, xoff: %d, yoff: %d, i: %d\n", */
-		/* 		offset, ly, scx, scy, line_offset, xoff, yoff, i); */
 		if (xoff == 0)
 			tilenr = read_memory(offset + i / 8);
 
