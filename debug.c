@@ -23,24 +23,31 @@ static void disassemble(int n)
 	int i, j;
 	u8 opcode;
 	u16 op_param;
+	const char **opname;
 
 	for (i = 0, j = 0; j < n; j++, i++) {
 		opcode = read_memory((*cpu.PC) + i);
+		opname = op_names;
+
+		if (opcode == 0xCB) {
+			opname = op_cbnames;
+			i++;
+		}
 
 		printf("\t");
-		if (strstr(op_names[opcode], "JR") != NULL) {
+		if (strstr(opname[opcode], "JR") != NULL) {
 			op_param = *cpu.PC + 2 + (char) read_memory(*cpu.PC + i + 1);
-			printf(op_names[opcode], op_param);
-		} else if (strstr(op_names[opcode], "%.4X") != NULL) {
+			printf(opname[opcode], op_param);
+		} else if (strstr(opname[opcode], "%.4X") != NULL) {
 			op_param = read_memory(cpu.PC[0] + i + 1) +
 				(read_memory(cpu.PC[0] + i + 2) << 8);
-			printf(op_names[opcode], op_param);
+			printf(opname[opcode], op_param);
 			i += 2;
-		} else if (strstr(op_names[opcode], "%.2X") != NULL) {
-			printf(op_names[opcode], read_memory(cpu.PC[0] + i + 1));
+		} else if (strstr(opname[opcode], "%.2X") != NULL) {
+			printf(opname[opcode], read_memory(cpu.PC[0] + i + 1));
 			i++;
 		} else {
-			printf(op_names[opcode]);
+			printf(opname[opcode]);
 		}
 
 		printf("\n");
