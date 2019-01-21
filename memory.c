@@ -213,8 +213,8 @@ u8 read_memory(u16 address)
 		if (address < 0x100) {
 			if (!memory.io_reg[0x50] & 0x1) {
 				ret = memory.bootrom[address];
-				break;
 			}
+			break;
 		}
 		ret = memory.rom[address];
 		break;
