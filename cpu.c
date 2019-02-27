@@ -49,8 +49,8 @@ int old_cpu_cycle(void)
 
 static void reset_clock_count(void)
 {
-	clock_count = 0;
-	old_clock_count = 0;
+	clock_count -= 1024;
+	old_clock_count -= 1024;
 }
 
 static void cpu_write_mem(u16 addr, u8 val)
@@ -475,6 +475,7 @@ void init_cpu(void)
 		L = 0x4D;
 		SP = 0xFFFE;
 		PC = 0x100;
+		clock_count = 740;
 	} else {
 		PC = 0x0;
 	}
