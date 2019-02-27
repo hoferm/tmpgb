@@ -85,10 +85,7 @@ static void oam_search(void)
 
 static u8 extract_color(u8 lsb, u8 msb, int px)
 {
-	if (px == 0)
-		px = 7;
-	else
-		px = 7 - px;
+	px = 7 - px;
 	return ((lsb >> px) & 0x1) + (((msb >> px) & 0x1) << 1);
 }
 
