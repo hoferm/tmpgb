@@ -31,6 +31,7 @@ static void disassemble(int n)
 
 		if (opcode == 0xCB) {
 			opname = op_cbnames;
+			opcode = read_memory((*cpu.PC) + i + 1);
 			i++;
 		}
 
@@ -56,10 +57,10 @@ static void disassemble(int n)
 
 static void step(void)
 {
-	update_timer();
-	update_screen();
 	disassemble(1);
 	fetch_opcode();
+	update_timer();
+	update_screen();
 }
 
 static void flags(void)
