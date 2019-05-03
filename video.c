@@ -196,9 +196,24 @@ static void update_registers(void)
 		bg_map = 0x9800;
 }
 
-static void set_statmode(u8 stat, u8 statmode)
+static u8 set_statmode(u8 stat, u8 statmode)
 {
 	stat = (stat & (0xFFU << 2)) + statmode;
+	write_stat(stat);
+	return stat;
+}
+
+static void ly_compare(u8 stat)
+{
+	u8 lyc = read_memory(0xFF45);
+	if (ly == lyc) {
+		stat = set_bit(stat, 2);
+		if (get_bit(stat, 6)) {
+			request_interrupt(INT_LCD);
+		}
+	} else {
+		stat = reset_bit(stat, 2);
+	}
 	write_stat(stat);
 }
 
@@ -221,13 +236,14 @@ int draw(u8 *scr)
 		if (clock >= 204) {
 			write_ly(ly+1);
 			if (ly == 144) {
-				set_statmode(stat, 1);
+				stat = set_statmode(stat, 1);
 				request_interrupt(INT_VBLANK);
 			}
 			else {
-				set_statmode(stat, 2);
+				stat = set_statmode(stat, 2);
 			}
 			clock -= 204;
+			ly_compare(stat);
 		}
 		break;
 	/* V-Blank */
@@ -240,13 +256,14 @@ int draw(u8 *scr)
 				set_statmode(stat, 2);
 			}
 			clock -= 456;
+			ly_compare(stat);
 		}
 		break;
 	/* OAM Search */
 	case 2:
 		if (clock >= 80) {
 			oam_search();
-			set_statmode(stat, 3);
+			stat = set_statmode(stat, 3);
 			clock -= 80;
 		}
 		break;
@@ -254,7 +271,7 @@ int draw(u8 *scr)
 	case 3:
 		if (clock >= 172) {
 			pixel_transfer();
-			set_statmode(stat, 0);
+			stat = set_statmode(stat, 0);
 			clock -= 172;
 			ret = LCD_DRAWN;
 		}
