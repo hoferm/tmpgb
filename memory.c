@@ -33,7 +33,7 @@ static struct mem {
 	u8 wram[0x2000]; /* 0xC000 - 0xDFFF */
 	u8 sprite_table[0xA0];
 	u8 io_reg[0x80];
-	u8 hram[0x70];
+	u8 hram[0x7E];
 
 	u8 interrupt_enable; /* 0xFFFF - First 5 bits used */
 
