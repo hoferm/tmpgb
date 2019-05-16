@@ -253,7 +253,7 @@ int draw(u8 *scr)
 			write_ly(ly);
 			if (ly >= 153) {
 				write_ly(0);
-				set_statmode(stat, 2);
+				stat = set_statmode(stat, 2);
 			}
 			clock -= 456;
 			ly_compare(stat);
