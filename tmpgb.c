@@ -12,6 +12,7 @@
 #include "timer.h"
 
 #define READ_SIZE 0x4000
+#define BROM_SIZE 256
 
 static char *bootrom;
 
@@ -23,15 +24,15 @@ static void usage(void)
 static void load_bootrom(const char *bootrom)
 {
 	FILE *fp;
-	u8 buffer[256];
+	u8 buffer[BROM_SIZE];
 	size_t nread;
 
 	fp = fopen(bootrom, "rb");
 	if (!fp)
 		die_errno("could not open BOOT ROM");
 
-	nread = fread(buffer, 1, 256, fp);
-	if (nread < 256) {
+	nread = fread(buffer, 1, BROM_SIZE, fp);
+	if (nread < BROM_SIZE) {
 		if (ferror(fp)) {
 			fclose(fp);
 			die_errno("could not read BOOT ROM");
