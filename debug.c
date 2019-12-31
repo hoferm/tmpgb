@@ -48,7 +48,7 @@ static void disassemble(int n)
 			printf(opname[opcode], read_memory(cpu.PC[0] + i + 1));
 			i++;
 		} else {
-			printf(opname[opcode]);
+			printf("%s", opname[opcode]);
 		}
 
 		printf("\n");
