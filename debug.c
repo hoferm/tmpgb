@@ -107,6 +107,7 @@ static void view_mem(u16 start, u16 end)
 {
 	int i;
 	int j = 0;
+	int range = start;
 
 	if (start > end) {
 		i = end;
@@ -115,9 +116,14 @@ static void view_mem(u16 start, u16 end)
 	}
 
 	for (i = start; i <= end; i++) {
-		if (j % 4 == 0 && j != 0)
+		if (j == 16) {
 			printf("\n");
-		printf("\t0x%.4X: %.2X", i, read_memory(i));
+			range += 16;
+			j = 0;
+		}
+		if (j == 0)
+			printf("%.4X:\t", range);
+		printf("%.2X ", read_memory(i));
 		j++;
 	}
 	printf("\n");
