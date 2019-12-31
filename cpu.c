@@ -29,6 +29,8 @@ static u16 SP;
 static int clock_count = 0;
 static int old_clock_count = 0;
 
+static u64 instruction_count = 0;
+
 static int ime_scheduled = 0;
 static int stopped = 0;
 
@@ -111,6 +113,7 @@ static void execute_opcode(u8 opcode)
 		ime_scheduled = 0;
 	}
 	optable[opcode]();
+	instruction_count ++;
 }
 
 void fetch_opcode(void)
@@ -497,6 +500,7 @@ void cpu_debug_info(struct cpu_info *cpu)
 	cpu->L = &L;
 	cpu->A = &A;
 	cpu->F = &F;
+	cpu->instr_count = &instruction_count;
 }
 
 /* NOP */

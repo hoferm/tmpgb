@@ -29,6 +29,7 @@ struct cpu_info {
 	u8 *L;
 	u8 *A;
 	u8 *F;
+	u64 *instr_count;
 };
 
 void cpu_debug_info(struct cpu_info *cpu);

@@ -93,7 +93,9 @@ static void intr_status(void)
 
 static void regs(void)
 {
-	printf("clock count: %d\n", cpu_cycle());
+	printf("clock count: %d | instr count: %ld\n",
+	       cpu_cycle(),
+	       *cpu.instr_count);
 	intr_status();
 	printf("PC: %.4X, SP: %.4X\n", *cpu.PC, *cpu.SP);
 	flags();
