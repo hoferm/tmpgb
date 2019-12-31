@@ -186,6 +186,8 @@ void debug(void)
 		step();
 	} else if (sscanf(cmd, "d %ud\n", &param) >= 1) {
 		disassemble(param);
+	} else if (sscanf(cmd, "m 0x%X-0x%X\n", &param, &param2) >= 1 ) {
+		view_mem(param, param2);
 	} else if (sscanf(cmd, "m 0x%X\n", &param) >= 1) {
 		view_mem(param, param);
 	} else if (sscanf(cmd, "m %s\n", tmp) >= 1) {
