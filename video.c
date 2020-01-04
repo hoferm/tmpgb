@@ -134,7 +134,7 @@ static void pixel_transfer(void)
 	u8 scy = read_memory(0xFF42);
 	u8 scx = read_memory(0xFF43);
 	u8 line_offset = ly + scy;
-	int offset = bg_map + scx / 8 + (32 * (line_offset / 8));
+	int offset = bg_map + (scx / 8) + (32 * (line_offset / 8));
 	int i;
 	int tilenr = read_memory(offset);
 	struct pixel px;
