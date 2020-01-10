@@ -112,8 +112,9 @@ static int spritedata(int x)
 {
 	int i, color;
 	u8 xoff, yoff;
+	const int MAX_SPRITES = 10;
 
-	for (i = 0; i < 10; i++) {
+	for (i = 0; i < MAX_SPRITES; i++) {
 		if (spr[i].x - 8 <= x && spr[i].x >= (x+1)) {
 			xoff = 8 - (spr[i].x - x);
 			yoff = (spr_height) - (spr[i].y - ly);
@@ -144,7 +145,7 @@ static void pixel_transfer(void)
 	for (i = 0; i < WIDTH; i++) {
 		u8 xoff = (i + scx) % 8;
 		if (xoff == 0)
-			tilenr = read_memory(offset + i / 8);
+			tilenr = read_memory(offset + (i / 8));
 
 		px.color = tiledata(tilenr, xoff, yoff, BG);
 		px.color = bg_palette[px.color];
