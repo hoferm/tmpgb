@@ -211,7 +211,7 @@ u8 read_memory(u16 address)
 	switch (address >> 12) {
 	case 0x0:
 		if (address < 0x100) {
-			if (!memory.io_reg[0x50] & 0x1) {
+			if (!(memory.io_reg[0x50] & 0x1)) {
 				ret = memory.bootrom[address];
 				break;
 			}
@@ -340,7 +340,7 @@ int init_memory(void)
 
 	write_joypad(0xCF);
 
-	write_memory(0xFF02, 0x7E);
+	write_memory(0xFF02, 0x00);
 	write_memory(0xFF03, 0xFF);
 
 	mode = memory.rom[CART_TYPE];
