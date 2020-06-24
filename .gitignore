@@ -3,3 +3,5 @@ obj/
 tmpgb
 gen_opcodes.sh
 resources/
+doc/
+.ccls
